@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PointSync
 
-## Getting Started
+**Plateforme SaaS de pointage et gestion de présence pour les entreprises africaines.**
 
-First, run the development server:
+## Démarrage rapide
+
+### Prérequis
+
+- Node.js 20+
+- npm
+- Compte Supabase (gratuit)
+
+### Installation
 
 ```bash
+# 1. Installer les dépendances
+npm install
+
+# 2. Copier les variables d'environnement
+cp .env.example .env.local
+
+# 3. Configurer les variables Supabase dans .env.local
+
+# 4. Générer le client Prisma
+npx prisma generate
+
+# 5. Lancer en développement
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+L'application sera disponible sur [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack technique
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Technologie | Rôle |
+|------------|------|
+| Next.js 15 | Framework React full-stack |
+| TypeScript | Typage statique |
+| Tailwind CSS v4 | Styles utilitaires |
+| shadcn/ui | Composants UI |
+| Supabase | Auth, BDD PostgreSQL, Realtime, Storage |
+| Prisma | ORM + migrations |
+| Zod | Validation |
+| TanStack Query | Fetching + cache |
+| Recharts | Graphiques |
+| Chariow | Paiement (mobile money, cartes) |
 
-## Learn More
+## Structure du projet
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/              # Routes Next.js (App Router)
+│   ├── (marketing)/  # Landing page, pricing
+│   ├── (auth)/       # Login, signup
+│   ├── (dashboard)/  # Application protégée
+│   └── api/          # API Routes
+├── components/       # Composants réutilisables
+│   ├── ui/           # shadcn/ui
+│   ├── layout/       # Header, sidebar, footer
+│   ├── common/       # Composants génériques
+│   └── ...
+├── lib/              # Utilitaires, clients, config
+├── services/         # Logique métier
+├── hooks/            # React hooks custom
+├── stores/           # State management (Zustand)
+├── validations/      # Schémas Zod
+├── types/            # Types TypeScript
+└── config/           # Configuration app
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Commandes utiles
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run dev          # Développement
+npm run build        # Build production
+npm run lint         # Linting
+npx prisma studio    # Interface visuelle BDD
+npx prisma migrate dev  # Appliquer les migrations
+```
 
-## Deploy on Vercel
+## Licence
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Propriétaire. Tous droits réservés.

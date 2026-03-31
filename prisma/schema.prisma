@@ -1,0 +1,708 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// AUTHENTIFICATION & MULTI-TENANT
+// ============================================================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  fullName      String   @map("full_name")
+  avatarUrl     String?  @map("avatar_url")
+  phone         String?
+  supabaseUid   String   @unique @map("supabase_uid")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  lastLoginAt   DateTime? @map("last_login_at")
+  isActive      Boolean  @default(true) @map("is_active")
+  isSuperAdmin  Boolean  @default(false) @map("is_super_admin")
+  locale        String   @default("fr")
+  timezone      String   @default("Africa/Abidjan")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  memberships   Membership[]
+  notifications Notification[]
+  auditLogs     AuditLog[] @relation("AuditActor")
+
+  @@map("users")
+}
+
+model Company {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  sector         String?
+  country        String   @default("CI")
+  city           String?
+  currency       String   @default("XOF")
+  timezone       String   @default("Africa/Abidjan")
+  phone          String?
+  email          String?
+  logoUrl        String?  @map("logo_url")
+  isActive       Boolean  @default(true) @map("is_active")
+  onboardingStep Int      @default(0) @map("onboarding_step")
+  trialEndsAt    DateTime? @map("trial_ends_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  memberships    Membership[]
+  sites          Site[]
+  departments    Department[]
+  employees      Employee[]
+  schedules      Schedule[]
+  leaveTypes     LeaveType[]
+  holidays       Holiday[]
+  subscription   Subscription?
+  billingEvents  BillingEvent[]
+  invoices       Invoice[]
+  settings       CompanySetting[]
+  imports        Import[]
+  auditLogs      AuditLog[]
+
+  @@map("companies")
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  companyId String   @map("company_id")
+  roleId    String   @map("role_id")
+  isOwner   Boolean  @default(false) @map("is_owner")
+  isActive  Boolean  @default(true) @map("is_active")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, companyId])
+  @@map("memberships")
+}
+
+// ============================================================
+// RÔLES & PERMISSIONS
+// ============================================================
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  companyId   String?  @map("company_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  memberships     Membership[]
+  rolePermissions RolePermission[]
+
+  @@unique([slug, companyId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  category    String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================================
+// SITES & DÉPARTEMENTS
+// ============================================================
+
+model Site {
+  id             String   @id @default(cuid())
+  companyId      String   @map("company_id")
+  name           String
+  address        String?
+  city           String?
+  latitude       Float?
+  longitude      Float?
+  geofenceRadius Int      @default(200) @map("geofence_radius")
+  isActive       Boolean  @default(true) @map("is_active")
+  clockInEnabled Boolean  @default(true) @map("clock_in_enabled")
+  workStartTime  String?  @map("work_start_time")
+  workEndTime    String?  @map("work_end_time")
+  graceMinutes   Int      @default(15) @map("grace_minutes")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  departments       Department[]
+  employees         Employee[]
+  attendanceRecords AttendanceRecord[]
+
+  @@map("sites")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  siteId    String?  @map("site_id")
+  name      String
+  description String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site      Site?      @relation(fields: [siteId], references: [id])
+  employees Employee[]
+
+  @@map("departments")
+}
+
+// ============================================================
+// EMPLOYÉS
+// ============================================================
+
+model Employee {
+  id           String       @id @default(cuid())
+  companyId    String       @map("company_id")
+  siteId       String?      @map("site_id")
+  departmentId String?      @map("department_id")
+  userId       String?      @map("user_id")
+  matricule    String?
+  firstName    String       @map("first_name")
+  lastName     String       @map("last_name")
+  email        String?
+  phone        String?
+  photoUrl     String?      @map("photo_url")
+  position     String?
+  contractType ContractType @default(CDI) @map("contract_type")
+  hireDate     DateTime?    @map("hire_date")
+  kioskPin     String?      @map("kiosk_pin")
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site                Site?                @relation(fields: [siteId], references: [id])
+  department          Department?          @relation(fields: [departmentId], references: [id])
+  attendanceRecords   AttendanceRecord[]
+  attendanceEvents    AttendanceEvent[]
+  scheduleAssignments ScheduleAssignment[]
+  leaveRequests       LeaveRequest[]
+  documents           EmployeeDocument[]
+
+  @@unique([companyId, matricule])
+  @@map("employees")
+}
+
+enum ContractType {
+  CDI
+  CDD
+  STAGE
+  FREELANCE
+  INTERIM
+  AUTRE
+}
+
+model EmployeeDocument {
+  id         String   @id @default(cuid())
+  employeeId String   @map("employee_id")
+  name       String
+  fileUrl    String   @map("file_url")
+  fileType   String?  @map("file_type")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_documents")
+}
+
+// ============================================================
+// POINTAGE & PRÉSENCE
+// ============================================================
+
+model AttendanceRecord {
+  id               String           @id @default(cuid())
+  companyId        String           @map("company_id")
+  employeeId       String           @map("employee_id")
+  siteId           String?          @map("site_id")
+  date             DateTime         @db.Date
+  status           AttendanceStatus @default(ABSENT)
+  clockIn          DateTime?        @map("clock_in")
+  clockOut         DateTime?        @map("clock_out")
+  clockInLat       Float?           @map("clock_in_lat")
+  clockInLng       Float?           @map("clock_in_lng")
+  clockOutLat      Float?           @map("clock_out_lat")
+  clockOutLng      Float?           @map("clock_out_lng")
+  clockInPhotoUrl  String?          @map("clock_in_photo_url")
+  clockOutPhotoUrl String?          @map("clock_out_photo_url")
+  isLate           Boolean          @default(false) @map("is_late")
+  lateMinutes      Int              @default(0) @map("late_minutes")
+  isEarlyDeparture Boolean          @default(false) @map("is_early_departure")
+  earlyMinutes     Int              @default(0) @map("early_minutes")
+  workedMinutes    Int              @default(0) @map("worked_minutes")
+  breakMinutes     Int              @default(0) @map("break_minutes")
+  overtimeMinutes  Int              @default(0) @map("overtime_minutes")
+  expectedMinutes  Int              @default(0) @map("expected_minutes")
+  isGeofenceOk     Boolean?         @map("is_geofence_ok")
+  isManualEntry    Boolean          @default(false) @map("is_manual_entry")
+  notes            String?
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  employee    Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  site        Site?                  @relation(fields: [siteId], references: [id])
+  events      AttendanceEvent[]
+  breaks      Break[]
+  corrections AttendanceCorrection[]
+
+  @@unique([employeeId, date])
+  @@index([companyId, date])
+  @@index([siteId, date])
+  @@map("attendance_records")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EARLY_DEPARTURE
+  HALF_DAY
+  ON_LEAVE
+  HOLIDAY
+  REST_DAY
+}
+
+model AttendanceEvent {
+  id           String      @id @default(cuid())
+  recordId     String      @map("record_id")
+  employeeId   String      @map("employee_id")
+  type         EventType
+  timestamp    DateTime    @default(now())
+  latitude     Float?
+  longitude    Float?
+  isGeofenceOk Boolean?    @map("is_geofence_ok")
+  photoUrl     String?     @map("photo_url")
+  source       EventSource @default(WEB)
+  deviceInfo   String?     @map("device_info")
+  ipAddress    String?     @map("ip_address")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  record   AttendanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  employee Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+  @@map("attendance_events")
+}
+
+enum EventType {
+  CLOCK_IN
+  CLOCK_OUT
+  BREAK_START
+  BREAK_END
+}
+
+enum EventSource {
+  WEB
+  MOBILE_WEB
+  KIOSK
+  ADMIN_MANUAL
+  API
+}
+
+model Break {
+  id              String   @id @default(cuid())
+  recordId        String   @map("record_id")
+  startTime       DateTime @map("start_time")
+  endTime         DateTime? @map("end_time")
+  durationMinutes Int?     @map("duration_minutes")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  record AttendanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@map("breaks")
+}
+
+model AttendanceCorrection {
+  id            String           @id @default(cuid())
+  recordId      String           @map("record_id")
+  requestedById String           @map("requested_by_id")
+  approvedById  String?          @map("approved_by_id")
+  fieldChanged  String           @map("field_changed")
+  oldValue      String?          @map("old_value")
+  newValue      String?          @map("new_value")
+  reason        String
+  status        CorrectionStatus @default(PENDING)
+  reviewedAt    DateTime?        @map("reviewed_at")
+  reviewNote    String?          @map("review_note")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  record AttendanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_corrections")
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================================
+// PLANNING & HORAIRES
+// ============================================================
+
+model Schedule {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  name        String
+  description String?
+  isTemplate  Boolean  @default(false) @map("is_template")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  shifts      Shift[]
+  assignments ScheduleAssignment[]
+
+  @@map("schedules")
+}
+
+model Shift {
+  id           String  @id @default(cuid())
+  scheduleId   String  @map("schedule_id")
+  dayOfWeek    Int     @map("day_of_week")
+  startTime    String  @map("start_time")
+  endTime      String  @map("end_time")
+  breakMinutes Int     @default(0) @map("break_minutes")
+  isWorkDay    Boolean @default(true) @map("is_work_day")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@map("shifts")
+}
+
+model ScheduleAssignment {
+  id         String    @id @default(cuid())
+  scheduleId String    @map("schedule_id")
+  employeeId String    @map("employee_id")
+  startDate  DateTime  @map("start_date") @db.Date
+  endDate    DateTime? @map("end_date") @db.Date
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("schedule_assignments")
+}
+
+// ============================================================
+// CONGÉS
+// ============================================================
+
+model LeaveType {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  name        String
+  slug        String
+  color       String   @default("#3B82F6")
+  defaultDays Int      @default(0) @map("default_days")
+  isPaid      Boolean  @default(true) @map("is_paid")
+  requiresDoc Boolean  @default(false) @map("requires_doc")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requests LeaveRequest[]
+
+  @@unique([companyId, slug])
+  @@map("leave_types")
+}
+
+model LeaveRequest {
+  id            String      @id @default(cuid())
+  employeeId    String      @map("employee_id")
+  leaveTypeId   String      @map("leave_type_id")
+  startDate     DateTime    @map("start_date") @db.Date
+  endDate       DateTime    @map("end_date") @db.Date
+  totalDays     Float       @map("total_days")
+  reason        String?
+  status        LeaveStatus @default(PENDING)
+  approvedById  String?     @map("approved_by_id")
+  reviewNote    String?     @map("review_note")
+  reviewedAt    DateTime?   @map("reviewed_at")
+  attachmentUrl String?     @map("attachment_url")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@map("leave_requests")
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model Holiday {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  name        String
+  date        DateTime @db.Date
+  isRecurring Boolean  @default(false) @map("is_recurring")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("holidays")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  companyId String?   @map("company_id")
+  type      String
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ============================================================
+// AUDIT
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String?  @map("company_id")
+  actorId   String?  @map("actor_id")
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company? @relation(fields: [companyId], references: [id])
+  actor   User?    @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// BILLING & ABONNEMENTS
+// ============================================================
+
+model Plan {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  priceMonthly Int      @map("price_monthly")
+  priceYearly  Int      @map("price_yearly")
+  currency     String   @default("XOF")
+  maxEmployees Int      @map("max_employees")
+  maxSites     Int      @map("max_sites")
+  features     Json
+  isActive     Boolean  @default(true) @map("is_active")
+  sortOrder    Int      @default(0) @map("sort_order")
+  isPopular    Boolean  @default(false) @map("is_popular")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                 String       @id @default(cuid())
+  companyId          String       @unique @map("company_id")
+  planId             String       @map("plan_id")
+  status             SubStatus    @default(TRIALING)
+  billingCycle       BillingCycle @default(MONTHLY) @map("billing_cycle")
+  currentPeriodStart DateTime     @map("current_period_start")
+  currentPeriodEnd   DateTime     @map("current_period_end")
+  trialEndsAt        DateTime?    @map("trial_ends_at")
+  gracePeriodEndsAt  DateTime?    @map("grace_period_ends_at")
+  cancelledAt        DateTime?    @map("cancelled_at")
+  chariowSaleId      String?      @map("chariow_sale_id")
+  chariowProductId   String?      @map("chariow_product_id")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan    Plan    @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+enum SubStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  GRACE_PERIOD
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+model BillingEvent {
+  id               String   @id @default(cuid())
+  companyId        String   @map("company_id")
+  type             String
+  amount           Int?
+  currency         String   @default("XOF")
+  chariowSaleId    String?  @map("chariow_sale_id")
+  chariowEventType String?  @map("chariow_event_type")
+  metadata         Json?
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@map("billing_events")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  companyId     String        @map("company_id")
+  number        String        @unique
+  amount        Int
+  currency      String        @default("XOF")
+  status        InvoiceStatus @default(PENDING)
+  periodStart   DateTime      @map("period_start")
+  periodEnd     DateTime      @map("period_end")
+  paidAt        DateTime?     @map("paid_at")
+  chariowSaleId String?       @map("chariow_sale_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ============================================================
+// CONFIGURATION & DIVERS
+// ============================================================
+
+model CompanySetting {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  key       String
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, key])
+  @@map("company_settings")
+}
+
+model Import {
+  id           String       @id @default(cuid())
+  companyId    String       @map("company_id")
+  type         String
+  fileName     String       @map("file_name")
+  status       ImportStatus @default(PENDING)
+  totalRows    Int          @default(0) @map("total_rows")
+  successRows  Int          @default(0) @map("success_rows")
+  errorRows    Int          @default(0) @map("error_rows")
+  errors       Json?
+  importedById String       @map("imported_by_id")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  completedAt  DateTime?    @map("completed_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("imports")
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String?
+  isEnabled   Boolean  @default(false) @map("is_enabled")
+  companyIds  String[] @map("company_ids")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
+}
+
+model DeviceSession {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  deviceName   String?  @map("device_name")
+  deviceType   String?  @map("device_type")
+  browser      String?
+  os           String?
+  ipAddress    String?  @map("ip_address")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("device_sessions")
+}
