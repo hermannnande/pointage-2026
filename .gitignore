@@ -52,3 +52,5 @@ prisma/migrations/**/migration_lock.toml
 *.swo
 
 /src/generated/prisma
+
+.vercel
