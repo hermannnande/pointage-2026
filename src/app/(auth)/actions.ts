@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { ActionResult } from "@/types";
@@ -10,6 +11,10 @@ import {
   type LoginInput,
   signupSchema,
   type SignupInput,
+  forgotPasswordSchema,
+  type ForgotPasswordInput,
+  resetPasswordSchema,
+  type ResetPasswordInput,
 } from "@/validations/auth.schema";
 
 export async function signupAction(
@@ -92,6 +97,82 @@ export async function loginAction(
       fullName: data.user.user_metadata?.full_name || parsed.data.email,
     });
     await updateLastLogin(user.id);
+  }
+
+  return { success: true };
+}
+
+export async function oauthLoginAction(
+  provider: "google" | "facebook",
+): Promise<ActionResult<{ url: string }>> {
+  const supabase = await createClient();
+  const headersList = await headers();
+  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: `${origin}/api/auth/callback`,
+    },
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  if (data.url) {
+    return { success: true, data: { url: data.url } };
+  }
+
+  return { success: false, error: "Impossible de lancer la connexion" };
+}
+
+export async function forgotPasswordAction(
+  input: ForgotPasswordInput,
+): Promise<ActionResult> {
+  const parsed = forgotPasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Adresse email invalide" };
+  }
+
+  const supabase = await createClient();
+  const headersList = await headers();
+  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    parsed.data.email,
+    { redirectTo: `${origin}/reset-password` },
+  );
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function resetPasswordAction(
+  input: ResetPasswordInput,
+): Promise<ActionResult> {
+  const parsed = resetPasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string[]> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[0]);
+      if (!fieldErrors[key]) fieldErrors[key] = [];
+      fieldErrors[key].push(issue.message);
+    }
+    return { success: false, error: "Données invalides", errors: fieldErrors };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
   }
 
   return { success: true };

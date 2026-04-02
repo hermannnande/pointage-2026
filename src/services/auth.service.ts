@@ -5,12 +5,21 @@ export async function findOrCreateUser(params: {
   email: string;
   fullName: string;
   phone?: string;
+  avatarUrl?: string | null;
 }) {
   const existing = await prisma.user.findUnique({
     where: { supabaseUid: params.supabaseUid },
   });
 
-  if (existing) return existing;
+  if (existing) {
+    if (params.avatarUrl && !existing.avatarUrl) {
+      return prisma.user.update({
+        where: { id: existing.id },
+        data: { avatarUrl: params.avatarUrl },
+      });
+    }
+    return existing;
+  }
 
   return prisma.user.create({
     data: {
@@ -18,6 +27,7 @@ export async function findOrCreateUser(params: {
       email: params.email,
       fullName: params.fullName,
       phone: params.phone || null,
+      avatarUrl: params.avatarUrl || null,
       emailVerified: true,
     },
   });
