@@ -56,7 +56,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <head>
-        <meta name="theme-color" content="#c8960a" />
+        <meta name="theme-color" content="#d6a21c" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="min-h-dvh antialiased">
