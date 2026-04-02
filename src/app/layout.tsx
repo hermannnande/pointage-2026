@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PointSync — Pointage & Présence pour l'Afrique",
-    template: "%s | PointSync",
+    default: "OControle — Pointage & Présence pour l'Afrique",
+    template: "%s | OControle",
   },
   description:
     "Plateforme SaaS de pointage et gestion de présence pour les entreprises africaines. Simple, rapide, fiable.",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "PointSync",
+    title: "OControle",
   },
   formatDetection: {
     telephone: false,

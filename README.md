@@ -1,4 +1,4 @@
-# PointSync
+# OControle
 
 **Plateforme SaaS de pointage et gestion de présence pour les entreprises africaines.**
 

@@ -39,15 +39,15 @@ export function MarketingFooter() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/25">
                 <Clock className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-lg font-bold">PointSync</span>
+              <span className="text-lg font-bold">OControle</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
               La plateforme de pointage et gestion de présence la plus simple et fiable pour les entreprises africaines.
             </p>
             <div className="mt-6 space-y-2.5">
-              <a href="mailto:contact@pointsync.com" className="flex items-center gap-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+              <a href="mailto:contact@ocontrole.com" className="flex items-center gap-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 <Mail className="h-4 w-4 shrink-0" />
-                contact@pointsync.com
+                contact@ocontrole.com
               </a>
               <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                 <Phone className="h-4 w-4 shrink-0" />
@@ -81,7 +81,7 @@ export function MarketingFooter() {
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} PointSync. Tous droits réservés.
+            &copy; {new Date().getFullYear()} OControle. Tous droits réservés.
           </p>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span className="inline-block h-2 w-2 rounded-full bg-success" />

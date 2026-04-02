@@ -13,12 +13,12 @@ export default function AuthLayout({
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-foreground/20">
             <Clock className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold">PointSync</span>
+          <span className="text-xl font-bold">OControle</span>
         </div>
 
         <div className="max-w-md">
           <blockquote className="text-lg font-medium leading-relaxed opacity-90">
-            &ldquo;Depuis que j&apos;utilise PointSync, je sais exactement qui
+            &ldquo;Depuis que j&apos;utilise OControle, je sais exactement qui
             est présent dans mes boutiques, même quand je ne suis pas sur
             place.&rdquo;
           </blockquote>
@@ -28,7 +28,7 @@ export default function AuthLayout({
         </div>
 
         <p className="text-xs opacity-50">
-          &copy; {new Date().getFullYear()} PointSync
+          &copy; {new Date().getFullYear()} OControle
         </p>
       </div>
 

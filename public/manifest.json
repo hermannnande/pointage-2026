@@ -1,6 +1,6 @@
 {
-  "name": "PointSync",
-  "short_name": "PointSync",
+  "name": "OControle",
+  "short_name": "OControle",
   "description": "Pointage et gestion de présence pour les entreprises africaines",
   "start_url": "/dashboard",
   "display": "standalone",

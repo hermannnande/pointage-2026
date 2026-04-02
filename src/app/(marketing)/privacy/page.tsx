@@ -2,8 +2,8 @@ import { Clock } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Politique de confidentialité — PointSync",
-  description: "Comment PointSync collecte, utilise et protège vos données personnelles.",
+  title: "Politique de confidentialité — OControle",
+  description: "Comment OControle collecte, utilise et protège vos données personnelles.",
 };
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Clock className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold">PointSync</span>
+          <span className="text-lg font-bold">OControle</span>
         </Link>
         <h1 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">
           Politique de confidentialité
@@ -28,13 +28,13 @@ export default function PrivacyPage() {
 
       <div className="prose prose-neutral max-w-none dark:prose-invert space-y-8 text-sm leading-relaxed text-muted-foreground [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-10 [&_h2]:mb-3 [&_h3]:text-base [&_h3]:font-medium [&_h3]:text-foreground [&_h3]:mt-6 [&_h3]:mb-2">
         <p>
-          Chez PointSync, nous prenons la protection de vos données personnelles très au sérieux.
+          Chez OControle, nous prenons la protection de vos données personnelles très au sérieux.
           Cette politique de confidentialité explique comment nous collectons, utilisons, stockons
           et protégeons vos informations lorsque vous utilisez notre plateforme.
         </p>
 
         <h2>1. Données collectées</h2>
-        <p>Nous collectons les données suivantes dans le cadre de l&apos;utilisation de PointSync :</p>
+        <p>Nous collectons les données suivantes dans le cadre de l&apos;utilisation de OControle :</p>
         <ul className="list-disc space-y-1.5 pl-6">
           <li><strong className="text-foreground">Informations de compte</strong> : nom, prénom, adresse email, numéro de téléphone, photo de profil.</li>
           <li><strong className="text-foreground">Informations d&apos;entreprise</strong> : nom de l&apos;entreprise, secteur d&apos;activité, pays, ville, sites de travail.</li>
@@ -98,12 +98,12 @@ export default function PrivacyPage() {
         </ul>
         <p>
           Pour exercer ces droits, contactez-nous à{" "}
-          <a href="mailto:contact@pointsync.com" className="text-primary hover:underline">contact@pointsync.com</a>.
+          <a href="mailto:contact@ocontrole.com" className="text-primary hover:underline">contact@ocontrole.com</a>.
         </p>
 
         <h2>8. Cookies</h2>
         <p>
-          PointSync utilise des cookies essentiels pour le fonctionnement de la plateforme
+          OControle utilise des cookies essentiels pour le fonctionnement de la plateforme
           (authentification, session). Nous n&apos;utilisons pas de cookies publicitaires ou de suivi.
         </p>
 
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
         <p>
           Pour toute question relative à cette politique, contactez-nous :<br />
           <strong className="text-foreground">Email</strong> :{" "}
-          <a href="mailto:contact@pointsync.com" className="text-primary hover:underline">contact@pointsync.com</a><br />
+          <a href="mailto:contact@ocontrole.com" className="text-primary hover:underline">contact@ocontrole.com</a><br />
           <strong className="text-foreground">Adresse</strong> : Abidjan, Côte d&apos;Ivoire
         </p>
       </div>

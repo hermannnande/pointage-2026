@@ -84,7 +84,7 @@ export function Sidebar() {
         </div>
         <div className="flex flex-col">
           <span className="text-sm font-bold tracking-tight text-sidebar-foreground">
-            PointSync
+            OControle
           </span>
           <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
             {tenant.company.name}

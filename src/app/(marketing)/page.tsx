@@ -39,12 +39,12 @@ import { cn } from "@/lib/utils";
 /*  Déposez vos images dans public/images/ avec les noms indiqués     */
 /* ------------------------------------------------------------------ */
 const IMAGES = {
-  hero:             { src: "/images/hero-banner.png",            width: 1200, height: 675,  alt: "Gérante utilisant PointSync dans sa boutique" },
-  featureBoutique:  { src: "/images/feature-boutique-owner.png", width: 800,  height: 533,  alt: "Propriétaire de boutique utilisant PointSync" },
-  featureHR:        { src: "/images/feature-hr-manager.png",     width: 800,  height: 533,  alt: "Responsable RH consultant les rapports PointSync" },
+  hero:             { src: "/images/hero-banner.png",            width: 1200, height: 675,  alt: "Gérante utilisant OControle dans sa boutique" },
+  featureBoutique:  { src: "/images/feature-boutique-owner.png", width: 800,  height: 533,  alt: "Propriétaire de boutique utilisant OControle" },
+  featureHR:        { src: "/images/feature-hr-manager.png",     width: 800,  height: 533,  alt: "Responsable RH consultant les rapports OControle" },
   featureKiosk:     { src: "/images/feature-kiosk-team.png",     width: 800,  height: 533,  alt: "Équipe utilisant le kiosque de pointage" },
   bannerCTA:        { src: "/images/banner-cta.png",             width: 1400, height: 500,  alt: "Équipe africaine professionnelle en entreprise" },
-  socialProof:      { src: "/images/social-proof.png",           width: 1400, height: 400,  alt: "Entreprises africaines qui utilisent PointSync" },
+  socialProof:      { src: "/images/social-proof.png",           width: 1400, height: 400,  alt: "Entreprises africaines qui utilisent OControle" },
 };
 /* ------------------------------------------------------------------ */
 
@@ -141,13 +141,13 @@ const useCases = [
 
 const testimonials = [
   { name: "Awa Konaté", role: "Gérante, Boutique Beauté", location: "Abidjan, CI", quote: "Avant je ne savais jamais si mes vendeuses étaient à l'heure. Maintenant je vois tout en temps réel depuis mon téléphone. C'est devenu indispensable.", rating: 5 },
-  { name: "Kouamé Diallo", role: "Directeur RH, PME 85 employés", location: "Douala, CM", quote: "J'ai remplacé nos fichiers Excel par PointSync. Les rapports mensuels pour la paie sont prêts en un clic. On a gagné 3 jours de travail par mois.", rating: 5 },
+  { name: "Kouamé Diallo", role: "Directeur RH, PME 85 employés", location: "Douala, CM", quote: "J'ai remplacé nos fichiers Excel par OControle. Les rapports mensuels pour la paie sont prêts en un clic. On a gagné 3 jours de travail par mois.", rating: 5 },
   { name: "Fatou Sarr", role: "Manager Restaurant", location: "Dakar, SN", quote: "La gestion des shifts matin et soir est devenue tellement simple. Mes employés adorent le système. Aucune formation n'a été nécessaire.", rating: 5 },
 ];
 
 const faqItems = [
-  { q: "Dois-je installer une application sur les téléphones ?", a: "Non. PointSync fonctionne directement dans le navigateur de n'importe quel smartphone. Vos employés n'ont rien à installer." },
-  { q: "Est-ce que ça marche avec une connexion internet instable ?", a: "Oui. PointSync est conçu pour l'Afrique. L'interface est ultra-légère et fonctionne même avec une connexion 2G/3G." },
+  { q: "Dois-je installer une application sur les téléphones ?", a: "Non. OControle fonctionne directement dans le navigateur de n'importe quel smartphone. Vos employés n'ont rien à installer." },
+  { q: "Est-ce que ça marche avec une connexion internet instable ?", a: "Oui. OControle est conçu pour l'Afrique. L'interface est ultra-légère et fonctionne même avec une connexion 2G/3G." },
   { q: "Mes données sont-elles sécurisées ?", a: "Absolument. Données isolées par entreprise, chiffrement de niveau bancaire, audit complet, conformité RGPD." },
   { q: "Quels moyens de paiement acceptez-vous ?", a: "Mobile money (Orange Money, Wave, MTN Money), cartes bancaires (Visa, Mastercard) et virements pour les entreprises." },
   { q: "Puis-je changer de plan ou annuler à tout moment ?", a: "Oui, sans engagement. 14 premiers jours gratuits sur tous les plans." },
@@ -208,7 +208,7 @@ export default function HomePage() {
 
               <AnimateIn delay={200}>
                 <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
-                  PointSync est la solution de pointage la plus simple d&apos;Afrique.
+                  OControle est la solution de pointage la plus simple d&apos;Afrique.
                   Suivez la présence de vos équipes en temps réel, gérez les retards,
                   les absences et les congés — depuis n&apos;importe quel téléphone.
                 </p>
@@ -292,7 +292,7 @@ export default function HomePage() {
               <span className="text-primary">Digitalisez votre gestion de présence en 3 minutes.</span>
             </h2>
             <p className="mt-4 text-base text-background/70 sm:text-lg">
-              Plus de 12 000 employés sont suivis chaque jour avec PointSync.
+              Plus de 12 000 employés sont suivis chaque jour avec OControle.
               Retards détectés automatiquement. Rapports de paie en un clic.
             </p>
             <div className="mt-8">
@@ -327,7 +327,7 @@ export default function HomePage() {
               <span className="text-primary">même à distance</span>
             </h2>
             <p className="mt-4 text-muted-foreground leading-relaxed">
-              Vous gérez une boutique, un salon ou un restaurant ? Avec PointSync,
+              Vous gérez une boutique, un salon ou un restaurant ? Avec OControle,
               vous savez exactement qui est présent, qui est en retard, et combien
               d&apos;heures chaque employé a travaillé — directement depuis votre téléphone.
             </p>
@@ -363,7 +363,7 @@ export default function HomePage() {
               </h2>
               <p className="mt-4 text-muted-foreground leading-relaxed">
                 Finies les heures passées à compiler des feuilles de présence.
-                PointSync calcule automatiquement les heures travaillées, les retards,
+                OControle calcule automatiquement les heures travaillées, les retards,
                 les absences et les heures supplémentaires. Exportez tout en CSV.
               </p>
               <ul className="mt-6 space-y-3">
@@ -507,13 +507,13 @@ export default function HomePage() {
       <section className="border-y bg-muted/20">
         <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
           <AnimateIn className="mx-auto max-w-2xl text-center">
-            <Badge variant="secondary" className="mb-4 px-3 py-1 text-xs font-medium">Pourquoi PointSync</Badge>
+            <Badge variant="secondary" className="mb-4 px-3 py-1 text-xs font-medium">Pourquoi OControle</Badge>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Avant vs. <span className="text-primary">Après</span></h2>
           </AnimateIn>
           <AnimateIn delay={100} className="mt-12">
             <div className="grid gap-6 md:grid-cols-2">
               <div className="rounded-2xl border-2 border-red-200 bg-red-50/50 p-6 sm:p-8 dark:border-red-900/50 dark:bg-red-950/20">
-                <p className="mb-5 text-sm font-semibold text-red-700 dark:text-red-400">Sans PointSync</p>
+                <p className="mb-5 text-sm font-semibold text-red-700 dark:text-red-400">Sans OControle</p>
                 <ul className="space-y-3.5">
                   {["Cahier de pointage perdu ou falsifié", "Aucune idée de qui est en retard", "Calcul des heures à la main", "3 jours pour préparer la paie", "Pas de visibilité sur les sites distants", "Conflits sur les heures travaillées"].map((item) => (
                     <li key={item} className="flex items-start gap-2.5 text-sm text-red-800/80 dark:text-red-300/80"><span className="mt-0.5 text-red-500">✕</span>{item}</li>
@@ -521,7 +521,7 @@ export default function HomePage() {
                 </ul>
               </div>
               <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                <p className="mb-5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">Avec PointSync</p>
+                <p className="mb-5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">Avec OControle</p>
                 <ul className="space-y-3.5">
                   {["Pointage digital infalsifiable", "Alertes retard en temps réel", "Heures calculées automatiquement", "Rapport de paie en 1 clic", "Tous les sites dans un seul dashboard", "Historique complet et auditable"].map((item) => (
                     <li key={item} className="flex items-start gap-2.5 text-sm text-emerald-800/80 dark:text-emerald-300/80"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />{item}</li>

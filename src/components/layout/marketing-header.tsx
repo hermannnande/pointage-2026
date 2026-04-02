@@ -40,7 +40,7 @@ export function MarketingHeader() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/25 transition-transform group-hover:scale-105">
             <Clock className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold tracking-tight">PointSync</span>
+          <span className="text-xl font-bold tracking-tight">OControle</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

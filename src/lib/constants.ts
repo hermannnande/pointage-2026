@@ -1,4 +1,4 @@
-export const APP_NAME = "PointSync";
+export const APP_NAME = "OControle";
 export const APP_DESCRIPTION =
   "Plateforme SaaS de pointage et gestion de présence pour les entreprises africaines";
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

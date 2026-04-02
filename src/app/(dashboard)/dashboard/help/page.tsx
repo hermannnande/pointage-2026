@@ -43,7 +43,7 @@ const FAQ_ITEMS = [
   {
     question: "Comment fonctionne l'essai gratuit ?",
     answer:
-      "Vous bénéficiez de 14 jours d'essai gratuit avec accès complet. À l'expiration, choisissez un plan pour continuer à utiliser PointSync.",
+      "Vous bénéficiez de 14 jours d'essai gratuit avec accès complet. À l'expiration, choisissez un plan pour continuer à utiliser OControle.",
   },
 ] as const;
 
@@ -120,7 +120,7 @@ export default function HelpPage() {
           <CardContent className="space-y-4">
             <p className="text-sm">
               <span className="text-muted-foreground">E-mail : </span>
-              <span className="font-medium">support@pointsync.com</span>
+              <span className="font-medium">support@ocontrole.com</span>
             </p>
             <Button type="button" disabled>
               Envoyer un message

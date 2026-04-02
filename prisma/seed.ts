@@ -163,7 +163,7 @@ const SYSTEM_ROLES = [
 ] as const;
 
 async function main() {
-  console.log("Démarrage du seed de démonstration PointSync…");
+  console.log("Démarrage du seed de démonstration OControle…");
 
   console.log("Plans : création ou mise à jour…");
   const plans = [
@@ -1013,7 +1013,7 @@ async function main() {
             timestamp: clockIn,
             latitude: lat,
             longitude: lng,
-            deviceInfo: "PointSync Mobile / Android 14",
+            deviceInfo: "OControle Mobile / Android 14",
             source: EventSource.MOBILE_WEB,
           },
         ];
@@ -1028,7 +1028,7 @@ async function main() {
             timestamp: bStart,
             latitude: lat,
             longitude: lng,
-            deviceInfo: "PointSync Mobile / Android 14",
+            deviceInfo: "OControle Mobile / Android 14",
             source: EventSource.MOBILE_WEB,
           });
           events.push({
@@ -1038,7 +1038,7 @@ async function main() {
             timestamp: bEnd,
             latitude: lat,
             longitude: lng,
-            deviceInfo: "PointSync Mobile / Android 14",
+            deviceInfo: "OControle Mobile / Android 14",
             source: EventSource.MOBILE_WEB,
           });
         }
@@ -1050,7 +1050,7 @@ async function main() {
           timestamp: clockOut,
           latitude: lat,
           longitude: lng,
-          deviceInfo: "PointSync Mobile / Android 14",
+          deviceInfo: "OControle Mobile / Android 14",
           source: EventSource.MOBILE_WEB,
         });
 

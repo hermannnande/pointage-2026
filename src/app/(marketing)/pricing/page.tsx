@@ -145,7 +145,7 @@ export default function PricingPage() {
               </div>
             </div>
             <Button size="lg" className="shrink-0 whitespace-nowrap" asChild>
-              <Link href="mailto:contact@pointsync.com">Nous contacter</Link>
+              <Link href="mailto:contact@ocontrole.com">Nous contacter</Link>
             </Button>
           </CardContent>
         </Card>
@@ -170,7 +170,7 @@ export default function PricingPage() {
             },
             {
               q: "Faut-il installer une application ?",
-              a: "Non. PointSync fonctionne directement dans le navigateur. Vous pouvez l'installer comme une application depuis votre téléphone, mais ce n'est pas obligatoire.",
+              a: "Non. OControle fonctionne directement dans le navigateur. Vous pouvez l'installer comme une application depuis votre téléphone, mais ce n'est pas obligatoire.",
             },
             {
               q: "Quels moyens de paiement acceptez-vous ?",

@@ -222,7 +222,7 @@ export default function KioskPage() {
 
       <div className="mx-auto flex max-w-lg flex-col items-center px-2 pt-16 pb-8 sm:pt-20">
         <h1 className="mb-8 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-          PointSync
+          OControle
         </h1>
 
         {feedback.kind === "success" && (

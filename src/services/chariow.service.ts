@@ -26,7 +26,7 @@ export async function createCheckoutSession(params: ChariowCheckoutParams) {
     body: JSON.stringify({
       amount,
       currency,
-      description: `PointSync — ${planName} (${billingCycle === "YEARLY" ? "Annuel" : "Mensuel"})`,
+      description: `OControle — ${planName} (${billingCycle === "YEARLY" ? "Annuel" : "Mensuel"})`,
       customer_email: customerEmail,
       customer_name: customerName,
       metadata: {
