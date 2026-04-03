@@ -73,24 +73,48 @@ export async function createCompanyWithOwner(params: {
 
     await seedDefaultLeaveTypes(tx, company.id);
 
-    const starterPlan = await tx.plan.findUnique({
+    let starterPlan = await tx.plan.findUnique({
       where: { slug: "starter" },
     });
 
-    if (starterPlan) {
-      const now = new Date();
-      await tx.subscription.create({
+    if (!starterPlan) {
+      starterPlan = await tx.plan.create({
         data: {
-          companyId: company.id,
-          planId: starterPlan.id,
-          status: "TRIALING",
-          billingCycle: "MONTHLY",
-          currentPeriodStart: now,
-          currentPeriodEnd: addDays(now, TRIAL_DAYS),
-          trialEndsAt: addDays(now, TRIAL_DAYS),
+          name: "Starter",
+          slug: "starter",
+          description: "Pour les petits commerces et entrepreneurs",
+          priceMonthly: 4500,
+          priceYearly: 43200,
+          currency: "XOF",
+          maxEmployees: 50,
+          maxSites: 3,
+          features: [
+            "Jusqu'à 50 employés",
+            "Jusqu'à 3 sites",
+            "Pointage entrée / sortie / pause",
+            "Géolocalisation et géofence",
+            "Dashboard temps réel",
+            "Gestion des horaires",
+            "Rapports basiques",
+            "Export CSV",
+          ],
+          isActive: true,
         },
       });
     }
+
+    const now = new Date();
+    await tx.subscription.create({
+      data: {
+        companyId: company.id,
+        planId: starterPlan.id,
+        status: "TRIALING",
+        billingCycle: "MONTHLY",
+        currentPeriodStart: now,
+        currentPeriodEnd: addDays(now, TRIAL_DAYS),
+        trialEndsAt: addDays(now, TRIAL_DAYS),
+      },
+    });
 
     return company;
   });

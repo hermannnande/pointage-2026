@@ -66,28 +66,34 @@ export default function OnboardingPage() {
     setLoading(true);
     setError(null);
 
-    const formData = new FormData(e.currentTarget);
-    const country = formData.get("country") as string;
-    const countryData = COUNTRIES.find((c) => c.code === country);
-    const name = formData.get("companyName") as string;
-    setCompanyName(name);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const country = formData.get("country") as string;
+      const countryData = COUNTRIES.find((c) => c.code === country);
+      const name = formData.get("companyName") as string;
+      setCompanyName(name);
 
-    const result = await createCompanyAction({
-      companyName: name,
-      sector: (formData.get("sector") as string) || undefined,
-      country,
-      city: (formData.get("city") as string) || undefined,
-      timezone: countryData?.timezone || "Africa/Abidjan",
-      currency: countryData?.currency || "XOF",
-    });
+      const result = await createCompanyAction({
+        companyName: name,
+        sector: (formData.get("sector") as string) || undefined,
+        country,
+        city: (formData.get("city") as string) || undefined,
+        timezone: countryData?.timezone || "Africa/Abidjan",
+        currency: countryData?.currency || "XOF",
+      });
 
-    setLoading(false);
-    if (!result.success) {
-      setError(result.error || "Erreur");
-      return;
+      if (!result.success) {
+        setError(result.error || "Erreur lors de la création");
+        return;
+      }
+
+      setCurrentStep("site");
+    } catch (err) {
+      console.error("Erreur onboarding entreprise:", err);
+      setError("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
     }
-
-    setCurrentStep("site");
   }
 
   async function handleSiteSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -95,24 +101,30 @@ export default function OnboardingPage() {
     setLoading(true);
     setError(null);
 
-    const formData = new FormData(e.currentTarget);
+    try {
+      const formData = new FormData(e.currentTarget);
 
-    const result = await createSiteAction({
-      siteName: formData.get("siteName") as string,
-      address: (formData.get("address") as string) || undefined,
-      city: (formData.get("siteCity") as string) || undefined,
-      workStartTime: (formData.get("workStartTime") as string) || "08:00",
-      workEndTime: (formData.get("workEndTime") as string) || "17:00",
-    });
+      const result = await createSiteAction({
+        siteName: formData.get("siteName") as string,
+        address: (formData.get("address") as string) || undefined,
+        city: (formData.get("siteCity") as string) || undefined,
+        workStartTime: (formData.get("workStartTime") as string) || "08:00",
+        workEndTime: (formData.get("workEndTime") as string) || "17:00",
+      });
 
-    setLoading(false);
-    if (!result.success) {
-      setError(result.error || "Erreur");
-      return;
+      if (!result.success) {
+        setError(result.error || "Erreur lors de la création du site");
+        return;
+      }
+
+      await completeOnboardingAction();
+      setCurrentStep("done");
+    } catch (err) {
+      console.error("Erreur onboarding site:", err);
+      setError("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
     }
-
-    await completeOnboardingAction();
-    setCurrentStep("done");
   }
 
   function goToDashboard() {
