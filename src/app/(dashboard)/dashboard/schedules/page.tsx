@@ -95,7 +95,7 @@ export default function SchedulesPage() {
     <>
       <PageHeader
         title="Plannings"
-        description="Gérez les horaires de travail"
+        description="Organisez les horaires de travail de vos équipes et définissez les jours de repos."
       >
         <Button variant="outline" size="sm" asChild>
           <Link href="/dashboard/schedules/weekly">Vue semaine</Link>

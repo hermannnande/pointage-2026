@@ -33,7 +33,7 @@ export function DashboardHeader({ companyName }: DashboardHeaderProps) {
     .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-md sm:px-6">
       <Sheet>
         <SheetTrigger
           render={
@@ -51,26 +51,26 @@ export function DashboardHeader({ companyName }: DashboardHeaderProps) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex items-center gap-2 lg:hidden">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-          <Clock className="h-3.5 w-3.5 text-primary-foreground" />
+      <div className="flex items-center gap-2.5 lg:hidden">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary shadow-sm">
+          <Clock className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="text-sm font-semibold truncate max-w-[140px]">{displayName}</span>
+        <span className="max-w-[140px] truncate text-sm font-bold">{displayName}</span>
       </div>
 
       <div className="hidden flex-1 md:block">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Rechercher..."
-            className="pl-9 bg-muted/50 border-0"
+            placeholder="Rechercher un employé, un site..."
+            className="rounded-xl border-0 bg-muted/50 pl-9"
           />
         </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1.5">
         <Link href="/dashboard/notifications">
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative rounded-xl">
             <Bell className="h-4 w-4" />
             <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
@@ -81,7 +81,7 @@ export function DashboardHeader({ companyName }: DashboardHeaderProps) {
         </Link>
 
         <Button variant="ghost" size="icon" className="rounded-full">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
             {initials}
           </div>
         </Button>

@@ -64,6 +64,20 @@ export default function SitesPage() {
         cell: ({ row }) => row.original.name,
       },
       {
+        id: "code",
+        header: "Code employé",
+        cell: ({ row }) => {
+          const code = (row.original as SiteRow & { code?: string | null }).code;
+          return code ? (
+            <span className="font-mono text-sm font-bold tracking-wider text-primary">
+              {code}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
         accessorKey: "city",
         header: "Ville",
         cell: ({ row }) => row.original.city ?? "—",
@@ -125,7 +139,7 @@ export default function SitesPage() {
     <>
       <PageHeader
         title="Sites"
-        description="Gérez vos lieux de travail"
+        description="Définissez les lieux autorisés pour le pointage de vos employés : boutique, bureau, atelier..."
       >
         <Button asChild>
           <Link href="/dashboard/sites/new">
@@ -140,7 +154,7 @@ export default function SitesPage() {
         <DataTable
           columns={columns}
           data={sites}
-          emptyMessage="Aucun site pour le moment."
+          emptyMessage="Ajoutez un site pour définir où vos employés peuvent pointer."
         />
       )}
     </>

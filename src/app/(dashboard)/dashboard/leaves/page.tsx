@@ -325,7 +325,7 @@ export default function LeavesPage() {
     <>
       <PageHeader
         title="Congés"
-        description="Demandes et gestion des congés"
+        description="Suivez les demandes de congé et validez-les facilement."
       >
         <Button variant="outline" asChild>
           <Link href="/dashboard/leaves/types">

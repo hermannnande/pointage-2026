@@ -10,10 +10,12 @@ import {
   Clock,
   CrosshairIcon,
   Globe2,
+  Info,
   Loader2,
   MapPin,
   Navigation,
   Rocket,
+  SkipForward,
   Sparkles,
   Store,
   Users,
@@ -32,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CountrySelect } from "@/components/common/country-select";
 
 import {
   completeOnboardingAction,
@@ -75,6 +78,7 @@ export default function OnboardingPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [geoAddress, setGeoAddress] = useState<string>("");
   const [geofenceRadius, setGeofenceRadius] = useState(50);
+  const [siteSkipped, setSiteSkipped] = useState(false);
 
   const currentIndex = stepsMeta.findIndex((s) => s.key === currentStep);
 
@@ -186,8 +190,25 @@ export default function OnboardingPage() {
     }
   }
 
+  async function handleSkipSite() {
+    setLoading(true);
+    setError(null);
+    try {
+      await completeOnboardingAction();
+      setSiteSkipped(true);
+      setCurrentStep("done");
+    } catch {
+      setError("Une erreur est survenue.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function goToDashboard() {
-    router.push("/dashboard");
+    try {
+      localStorage.removeItem("ocontrole_tutorial_seen");
+    } catch {}
+    router.push("/dashboard?welcome=true");
     router.refresh();
   }
 
@@ -259,6 +280,17 @@ export default function OnboardingPage() {
               </p>
             </div>
 
+            {/* Mini-tuto */}
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3.5 dark:border-blue-900 dark:bg-blue-950/30">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="font-medium">Etape 1 sur 2 : Votre entreprise</p>
+                <p className="mt-1 text-xs leading-relaxed text-blue-600 dark:text-blue-300">
+                  Renseignez simplement le nom de votre entreprise, boutique ou salon. Le secteur et la ville sont optionnels, vous pourrez les modifier plus tard dans les parametres.
+                </p>
+              </div>
+            </div>
+
             <form onSubmit={handleCompanySubmit} className="space-y-5">
               {error && (
                 <div className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -288,7 +320,7 @@ export default function OnboardingPage() {
                   <SelectTrigger id="sector" className="h-11">
                     <SelectValue placeholder="Choisir un secteur..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="min-w-[280px] sm:min-w-[340px]">
                     {SECTORS.map((s) => (
                       <SelectItem key={s.value} value={s.value}>
                         <span className="flex items-center gap-2">
@@ -301,28 +333,17 @@ export default function OnboardingPage() {
                 </Select>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="country" className="text-sm font-medium">
                     <Globe2 className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
                     Pays <span className="text-destructive">*</span>
                   </Label>
-                  <Select
+                  <CountrySelect
                     name="country"
-                    defaultValue="CI"
-                    onValueChange={setSelectedCountry}
-                  >
-                    <SelectTrigger id="country" className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {COUNTRIES.map((c) => (
-                        <SelectItem key={c.code} value={c.code}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    value={selectedCountry || "CI"}
+                    onChange={setSelectedCountry}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
@@ -332,7 +353,7 @@ export default function OnboardingPage() {
                   <Input
                     id="city"
                     name="city"
-                    placeholder="Ex: Abidjan"
+                    placeholder="Ex: Abidjan, Dakar, Douala..."
                     disabled={loading}
                     className="h-11"
                   />
@@ -369,8 +390,32 @@ export default function OnboardingPage() {
                 Localisez votre lieu de travail
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                La géolocalisation permet de vérifier la présence de vos employés sur site
+                La geolocalisation permet de verifier la presence de vos employes sur site
               </p>
+            </div>
+
+            {/* Mini-tuto */}
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3.5 dark:border-blue-900 dark:bg-blue-950/30">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="font-medium">Etape 2 sur 2 : Votre lieu de travail</p>
+                <p className="mt-1 text-xs leading-relaxed text-blue-600 dark:text-blue-300">
+                  C&apos;est l&apos;endroit ou vos employes pointent (boutique, bureau, atelier...). Vous pouvez utiliser la geolocalisation ou saisir l&apos;adresse manuellement. Vous pourrez toujours ajouter d&apos;autres sites plus tard.
+                </p>
+              </div>
+            </div>
+
+            {/* Bouton passer */}
+            <div className="mb-5 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={handleSkipSite}
+                disabled={loading}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <SkipForward className="h-4 w-4" />
+                Passer, je configurerai mon site plus tard
+              </button>
             </div>
 
             <form onSubmit={handleSiteSubmit} className="space-y-5">
@@ -523,7 +568,7 @@ export default function OnboardingPage() {
                     <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="min-w-[280px] sm:min-w-[340px]">
                       {RADIUS_OPTIONS.map((r) => (
                         <SelectItem key={r.value} value={String(r.value)}>
                           {r.label}
@@ -650,13 +695,22 @@ export default function OnboardingPage() {
               </div>
               <div className="rounded-xl border bg-muted/30 p-3 text-center">
                 <MapPin className="mx-auto h-5 w-5 text-muted-foreground" />
-                <p className="mt-1.5 text-xs font-medium">1 site</p>
+                <p className="mt-1.5 text-xs font-medium">{siteSkipped ? "0 site" : "1 site"}</p>
               </div>
               <div className="rounded-xl border bg-muted/30 p-3 text-center">
                 <Users className="mx-auto h-5 w-5 text-muted-foreground" />
-                <p className="mt-1.5 text-xs font-medium">0 employé</p>
+                <p className="mt-1.5 text-xs font-medium">0 employe</p>
               </div>
             </div>
+
+            {siteSkipped && (
+              <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                  Pensez a configurer votre premier site depuis le tableau de bord pour activer le pointage par geolocalisation.
+                </p>
+              </div>
+            )}
 
             <Button onClick={goToDashboard} className="mt-8 w-full gap-2" size="lg">
               Accéder au tableau de bord

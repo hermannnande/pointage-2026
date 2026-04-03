@@ -235,7 +235,7 @@ export default function AttendanceLivePage() {
       <>
         <PageHeader
           title="Pointage en direct"
-          description="Suivi en temps réel de la présence"
+          description="Voyez en temps réel qui a pointé aujourd'hui."
         >
           <Skeleton className="h-9 w-28" />
           <Skeleton className="h-9 w-24" />
@@ -255,7 +255,7 @@ export default function AttendanceLivePage() {
     <>
       <PageHeader
         title="Pointage en direct"
-        description="Suivi en temps réel de la présence"
+        description="Voyez en temps réel qui a pointé aujourd'hui."
       >
         <Button variant="outline" asChild>
           <Link href="/dashboard/attendance/history">Historique</Link>

@@ -1,6 +1,7 @@
 import type { ContractType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma/client";
+import { hashPassword } from "@/lib/employee-auth";
 import type { CreateEmployeeInput, UpdateEmployeeInput } from "@/validations/employee.schema";
 
 export interface EmployeeFilters {
@@ -67,6 +68,14 @@ export async function getEmployeeById(companyId: string, employeeId: string) {
 }
 
 export async function createEmployee(companyId: string, data: CreateEmployeeInput) {
+  let matricule = data.matricule || null;
+  if (!matricule) {
+    const count = await prisma.employee.count({ where: { companyId } });
+    matricule = `EMP-${String(count + 1).padStart(3, "0")}`;
+  }
+
+  const passwordHash = data.password ? hashPassword(data.password) : null;
+
   return prisma.employee.create({
     data: {
       companyId,
@@ -74,12 +83,13 @@ export async function createEmployee(companyId: string, data: CreateEmployeeInpu
       lastName: data.lastName,
       email: data.email || null,
       phone: data.phone || null,
-      matricule: data.matricule || null,
+      matricule,
       position: data.position || null,
       siteId: data.siteId || null,
       departmentId: data.departmentId || null,
       contractType: data.contractType as ContractType,
       hireDate: data.hireDate ? new Date(data.hireDate) : null,
+      passwordHash,
     },
   });
 }
@@ -99,6 +109,7 @@ export async function updateEmployee(companyId: string, data: UpdateEmployeeInpu
   if (rest.contractType !== undefined) updateData.contractType = rest.contractType;
   if (rest.isActive !== undefined) updateData.isActive = rest.isActive;
   if (rest.hireDate !== undefined) updateData.hireDate = rest.hireDate ? new Date(rest.hireDate) : null;
+  if (rest.password) updateData.passwordHash = hashPassword(rest.password);
 
   return prisma.employee.update({ where: { id }, data: updateData });
 }

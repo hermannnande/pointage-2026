@@ -10,11 +10,15 @@ import "./globals.css";
 const geistSans = Geist({
   variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -57,7 +61,10 @@ export default function RootLayout({
     >
       <head>
         <meta name="theme-color" content="#d6a21c" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="dns-prefetch" href="https://ubvtaviufrhajndwcmdm.supabase.co" />
+        <link rel="preconnect" href="https://ubvtaviufrhajndwcmdm.supabase.co" crossOrigin="anonymous" />
       </head>
       <body className="min-h-dvh antialiased">
         <ThemeProvider

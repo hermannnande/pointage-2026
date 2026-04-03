@@ -181,13 +181,19 @@ export default function LoginPage() {
             <LoginForm />
           </Suspense>
         </CardContent>
-        <CardFooter className="flex-col p-0 pt-6 sm:p-6 sm:pt-4">
+        <CardFooter className="flex-col gap-3 p-0 pt-6 sm:p-6 sm:pt-4">
           <p className="text-center text-sm text-muted-foreground">
             Pas encore de compte ?{" "}
             <Link href="/signup" className="font-medium text-primary hover:underline">
               Créer un compte
             </Link>
           </p>
+          <Link
+            href="/employe"
+            className="text-xs text-muted-foreground hover:text-primary hover:underline"
+          >
+            Vous êtes employé ? Connectez-vous ici →
+          </Link>
         </CardFooter>
       </Card>
     </>

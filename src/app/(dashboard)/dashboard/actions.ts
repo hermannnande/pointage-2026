@@ -1,12 +1,10 @@
 "use server";
 
-import { PERMISSIONS } from "@/config/permissions";
-
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import * as dashboardService from "@/services/dashboard.service";
 import * as siteService from "@/services/site.service";
-import { getTenantContext, requirePermission } from "@/services/tenant.service";
+import { getTenantContext } from "@/services/tenant.service";
 
 async function getContext() {
   const supabase = await createClient();
@@ -50,4 +48,15 @@ export async function getSitesForFilterAction() {
 export async function getTenantRoleAction() {
   const ctx = await getContext();
   return { role: ctx.role, isOwner: ctx.isOwner };
+}
+
+export async function getAdminDashboardBatchAction(siteId?: string) {
+  const ctx = await getContext();
+  const [stats, weekly, monthly, sites] = await Promise.all([
+    dashboardService.getDashboardStats(ctx.companyId, siteId),
+    dashboardService.getWeeklyTrend(ctx.companyId, siteId),
+    dashboardService.getMonthlyTrend(ctx.companyId, siteId),
+    siteService.getSites(ctx.companyId),
+  ]);
+  return { role: ctx.role, isOwner: ctx.isOwner, stats, weekly, monthly, sites };
 }

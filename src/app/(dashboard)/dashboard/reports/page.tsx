@@ -404,7 +404,7 @@ export default function ReportsPage() {
     <>
       <PageHeader
         title="Rapports"
-        description="Générez et exportez vos rapports de présence"
+        description="Consultez les statistiques de présence, retard et absence. Exportez les données pour la paie."
       >
         <Button variant="outline" size="sm" asChild>
           <Link href="/dashboard/help">Aide</Link>

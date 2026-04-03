@@ -11,6 +11,11 @@ export const createEmployeeSchema = z.object({
   departmentId: z.string().optional(),
   contractType: z.enum(["CDI", "CDD", "STAGE", "FREELANCE", "INTERIM", "AUTRE"]).default("CDI"),
   hireDate: z.string().optional(),
+  password: z
+    .string()
+    .min(4, "Le mot de passe doit contenir au moins 4 caractères")
+    .max(50)
+    .optional(),
 });
 
 export const updateEmployeeSchema = createEmployeeSchema.partial().extend({

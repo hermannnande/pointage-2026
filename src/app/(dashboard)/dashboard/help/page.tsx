@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Mail } from "lucide-react";
+import { BookOpen, ChevronDown, Mail, Rocket } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useTutorialState } from "@/hooks/use-dashboard-preferences";
+import { OnboardingTutorial } from "@/components/dashboard/onboarding-tutorial";
 
 const FAQ_ITEMS = [
   {
@@ -77,14 +79,53 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 }
 
 export default function HelpPage() {
+  const { reset: resetTutorial } = useTutorialState();
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  function handleRelaunchTutorial() {
+    resetTutorial();
+    setShowTutorial(true);
+  }
+
   return (
     <>
+      {showTutorial && (
+        <OnboardingTutorial onComplete={() => setShowTutorial(false)} />
+      )}
+
       <PageHeader
         title="Centre d'aide"
-        description="Trouvez des réponses à vos questions"
+        description="Trouvez des réponses à vos questions et apprenez à utiliser OControle simplement."
       />
 
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
+        {/* Guide de prise en main */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <Rocket className="size-5 text-primary" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <CardTitle>Guide de prise en main</CardTitle>
+                <CardDescription>
+                  Découvrez les fonctionnalités essentielles en quelques étapes simples.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              onClick={handleRelaunchTutorial}
+              className="gap-2"
+            >
+              <BookOpen className="h-4 w-4" />
+              Lancer le guide
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Questions fréquentes</CardTitle>

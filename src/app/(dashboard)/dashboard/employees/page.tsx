@@ -176,7 +176,7 @@ export default function EmployeesPage() {
       <>
         <PageHeader
           title="Employés"
-          description="Gérez votre équipe"
+          description="Ajoutez et gérez les personnes qui travaillent dans votre entreprise."
         >
           <Button variant="outline" asChild>
             <Link href="/dashboard/employees/import">
@@ -215,7 +215,7 @@ export default function EmployeesPage() {
     <>
       <PageHeader
         title="Employés"
-        description="Gérez votre équipe"
+        description="Ajoutez et gérez les personnes qui travaillent dans votre entreprise."
       >
         <Button variant="outline" asChild>
           <Link href="/dashboard/employees/import">
@@ -236,7 +236,7 @@ export default function EmployeesPage() {
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Rechercher…"
+            placeholder="Rechercher un employé par nom ou numéro..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Recherche employés"
@@ -265,7 +265,7 @@ export default function EmployeesPage() {
         <DataTable
           columns={columns}
           data={employees}
-          emptyMessage="Aucun employé pour le moment."
+          emptyMessage="Vous n'avez pas encore ajouté d'employé. Commencez par enregistrer votre premier employé."
         />
       </div>
 

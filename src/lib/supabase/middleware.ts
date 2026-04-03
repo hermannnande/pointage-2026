@@ -64,6 +64,30 @@ export async function updateSession(request: NextRequest) {
   const isResetPage = pathname.startsWith("/reset-password");
   const isDashboardPage = pathname.startsWith("/dashboard");
   const isOnboardingPage = pathname.startsWith("/onboarding");
+  const isEmployeeSpace = pathname.startsWith("/espace-employe");
+  const isEmployeeLogin = pathname === "/employe";
+
+  if (isEmployeeSpace) {
+    const sessionCookie = request.cookies.get("oc_employee_session");
+    if (!sessionCookie?.value) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/employe";
+      return NextResponse.redirect(url);
+    }
+    supabaseResponse.headers.set("x-next-pathname", pathname);
+    return supabaseResponse;
+  }
+
+  if (isEmployeeLogin) {
+    const sessionCookie = request.cookies.get("oc_employee_session");
+    if (sessionCookie?.value) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/espace-employe";
+      return NextResponse.redirect(url);
+    }
+    supabaseResponse.headers.set("x-next-pathname", pathname);
+    return supabaseResponse;
+  }
 
   if (!user && (isDashboardPage || isOnboardingPage)) {
     const url = request.nextUrl.clone();

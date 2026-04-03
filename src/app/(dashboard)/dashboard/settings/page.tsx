@@ -34,7 +34,7 @@ export default function SettingsPage() {
     <>
       <PageHeader
         title="Paramètres"
-        description="Configuration de votre entreprise"
+        description="Personnalisez le fonctionnement de votre espace OControle."
       />
 
       <div className="mx-auto flex max-w-3xl flex-col gap-6">

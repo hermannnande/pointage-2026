@@ -1,32 +1,30 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  Building2,
   Calendar,
   Clock,
   FileEdit,
+  HelpCircle,
+  MapPin,
+  Plus,
   Timer,
   TrendingUp,
   UserCheck,
+  UserPlus,
   Users,
   UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -37,8 +35,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ModeSwitch } from "@/components/dashboard/mode-switch";
+import {
+  useDashboardMode,
+  useTutorialState,
+} from "@/hooks/use-dashboard-preferences";
+
+const OnboardingTutorial = dynamic(
+  () => import("@/components/dashboard/onboarding-tutorial").then((m) => m.OnboardingTutorial),
+  { ssr: false },
+);
+
+const LazyBarChart = dynamic(() => import("recharts").then((m) => m.BarChart), { ssr: false });
+const LazyBar = dynamic(() => import("recharts").then((m) => m.Bar), { ssr: false });
+const LazyLineChart = dynamic(() => import("recharts").then((m) => m.LineChart), { ssr: false });
+const LazyLine = dynamic(() => import("recharts").then((m) => m.Line), { ssr: false });
+const LazyResponsiveContainer = dynamic(() => import("recharts").then((m) => m.ResponsiveContainer), { ssr: false });
+const LazyTooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: false });
+const LazyXAxis = dynamic(() => import("recharts").then((m) => m.XAxis), { ssr: false });
+const LazyYAxis = dynamic(() => import("recharts").then((m) => m.YAxis), { ssr: false });
+const LazyCartesianGrid = dynamic(() => import("recharts").then((m) => m.CartesianGrid), { ssr: false });
 
 import {
+  getAdminDashboardBatchAction,
   getDashboardStatsAction,
   getEmployeeDashboardAction,
   getMonthlyTrendAction,
@@ -83,116 +102,165 @@ type MonthlyRow = Awaited<ReturnType<typeof getMonthlyTrendAction>>[number];
 type SiteRow = Awaited<ReturnType<typeof getSitesForFilterAction>>[number];
 type EmployeeDash = Awaited<ReturnType<typeof getEmployeeDashboardAction>>;
 
-function AdminStatCard({
+/* ---------- Stat card ---------- */
+function StatCard({
   label,
+  subtitle,
   value,
   icon: Icon,
   color,
 }: {
   label: string;
+  subtitle?: string;
   value: string | number;
   icon: ComponentType<{ className?: string }>;
   color: "blue" | "green" | "amber" | "red" | "purple" | "indigo" | "orange" | "slate";
 }) {
-  const styles: Record<
-    typeof color,
-    { box: string; label: string; icon: string }
-  > = {
-    blue: {
-      box: "bg-blue-50 dark:bg-blue-950/20",
-      label: "text-blue-900 dark:text-blue-100",
-      icon: "text-blue-600 dark:text-blue-400",
-    },
+  const palette: Record<typeof color, { bg: string; iconBg: string; iconFg: string }> = {
     green: {
-      box: "bg-green-50 dark:bg-green-950/20",
-      label: "text-green-900 dark:text-green-100",
-      icon: "text-green-600 dark:text-green-400",
+      bg: "border-green-100 dark:border-green-900/40",
+      iconBg: "bg-green-100 dark:bg-green-900/30",
+      iconFg: "text-green-600 dark:text-green-400",
     },
     amber: {
-      box: "bg-amber-50 dark:bg-amber-950/20",
-      label: "text-amber-900 dark:text-amber-100",
-      icon: "text-amber-600 dark:text-amber-400",
+      bg: "border-amber-100 dark:border-amber-900/40",
+      iconBg: "bg-amber-100 dark:bg-amber-900/30",
+      iconFg: "text-amber-600 dark:text-amber-400",
     },
     red: {
-      box: "bg-red-50 dark:bg-red-950/20",
-      label: "text-red-900 dark:text-red-100",
-      icon: "text-red-600 dark:text-red-400",
+      bg: "border-red-100 dark:border-red-900/40",
+      iconBg: "bg-red-100 dark:bg-red-900/30",
+      iconFg: "text-red-600 dark:text-red-400",
+    },
+    blue: {
+      bg: "border-blue-100 dark:border-blue-900/40",
+      iconBg: "bg-blue-100 dark:bg-blue-900/30",
+      iconFg: "text-blue-600 dark:text-blue-400",
     },
     purple: {
-      box: "bg-purple-50 dark:bg-purple-950/20",
-      label: "text-purple-900 dark:text-purple-100",
-      icon: "text-purple-600 dark:text-purple-400",
+      bg: "border-purple-100 dark:border-purple-900/40",
+      iconBg: "bg-purple-100 dark:bg-purple-900/30",
+      iconFg: "text-purple-600 dark:text-purple-400",
     },
     indigo: {
-      box: "bg-indigo-50 dark:bg-indigo-950/20",
-      label: "text-indigo-900 dark:text-indigo-100",
-      icon: "text-indigo-600 dark:text-indigo-400",
+      bg: "border-indigo-100 dark:border-indigo-900/40",
+      iconBg: "bg-indigo-100 dark:bg-indigo-900/30",
+      iconFg: "text-indigo-600 dark:text-indigo-400",
     },
     orange: {
-      box: "bg-orange-50 dark:bg-orange-950/20",
-      label: "text-orange-900 dark:text-orange-100",
-      icon: "text-orange-600 dark:text-orange-400",
+      bg: "border-orange-100 dark:border-orange-900/40",
+      iconBg: "bg-orange-100 dark:bg-orange-900/30",
+      iconFg: "text-orange-600 dark:text-orange-400",
     },
     slate: {
-      box: "bg-slate-50 dark:bg-slate-950/20",
-      label: "text-slate-900 dark:text-slate-100",
-      icon: "text-slate-600 dark:text-slate-400",
+      bg: "border-slate-100 dark:border-slate-900/40",
+      iconBg: "bg-slate-100 dark:bg-slate-900/30",
+      iconFg: "text-slate-600 dark:text-slate-400",
     },
   };
-  const t = styles[color];
+  const p = palette[color];
   return (
-    <div className={`rounded-xl border p-4 ${t.box}`}>
-      <div className="flex items-center justify-between">
-        <p className={`text-sm font-medium ${t.label}`}>{label}</p>
-        <Icon className={`h-5 w-5 ${t.icon}`} />
+    <div
+      className={`group relative overflow-hidden rounded-2xl border bg-white p-5 transition-shadow hover:shadow-md dark:bg-card ${p.bg}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
+          {subtitle && (
+            <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>
+          )}
+        </div>
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${p.iconBg}`}
+        >
+          <Icon className={`h-5 w-5 ${p.iconFg}`} />
+        </div>
       </div>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
     </div>
   );
 }
 
+/* ---------- Quick action card ---------- */
+function QuickAction({
+  icon: Icon,
+  title,
+  description,
+  href,
+  color,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  href: string;
+  color: string;
+}) {
+  return (
+    <Link href={href} className="group">
+      <div className="flex items-start gap-4 rounded-2xl border bg-white p-4 transition-all hover:border-primary/30 hover:shadow-md dark:bg-card">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        </div>
+        <ArrowRight className="mt-2 h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+      </div>
+    </Link>
+  );
+}
+
+/* ---------- Skeletons ---------- */
 function DashboardSkeleton({ mode }: { mode: "admin" | "employee" }) {
   if (mode === "employee") {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="mx-auto h-40 max-w-md rounded-xl" />
+        <Skeleton className="mx-auto h-40 max-w-md rounded-2xl" />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Skeleton className="h-28 rounded-xl" />
-          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
         </div>
-        <Skeleton className="h-20 rounded-xl" />
       </div>
     );
   }
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="mt-2 h-4 w-72" />
-        </div>
-        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-10 w-56" />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-2xl" />
         ))}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-[340px] rounded-xl" />
-        <Skeleton className="h-[340px] rounded-xl" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
-        ))}
+        <Skeleton className="h-[340px] rounded-2xl" />
+        <Skeleton className="h-[340px] rounded-2xl" />
       </div>
     </div>
   );
 }
 
+/* ============================================================
+   MAIN DASHBOARD
+   ============================================================ */
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const isWelcome = searchParams.get("welcome") === "true";
+
+  const { mode, setMode, loaded: modeLoaded } = useDashboardMode();
+  const {
+    seen: tutorialSeen,
+    loaded: tutorialLoaded,
+    markSeen: markTutorialSeen,
+    reset: resetTutorial,
+  } = useTutorialState();
+
   const [roleLoading, setRoleLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -213,13 +281,13 @@ export default function DashboardPage() {
     [siteFilter],
   );
 
-  const loadAdminData = useCallback(async () => {
+  const loadAdminData = useCallback(async (sid?: string) => {
     setAdminLoading(true);
     try {
       const [statsRes, weeklyRes, monthlyRes] = await Promise.all([
-        getDashboardStatsAction(siteIdForAction),
-        getWeeklyTrendAction(siteIdForAction),
-        getMonthlyTrendAction(siteIdForAction),
+        getDashboardStatsAction(sid),
+        getWeeklyTrendAction(sid),
+        getMonthlyTrendAction(sid),
       ]);
       setStats(statsRes);
       setWeekly(weeklyRes);
@@ -229,65 +297,52 @@ export default function DashboardPage() {
     } finally {
       setAdminLoading(false);
     }
-  }, [siteIdForAction]);
+  }, []);
 
+  // Single batch load on mount: role + sites + stats in ONE server call
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { role } = await getTenantRoleAction();
+        const batch = await getAdminDashboardBatchAction();
         if (cancelled) return;
-        setUserRole(role);
+        setUserRole(batch.role);
+
+        if (batch.role === "employee") {
+          setRoleLoading(false);
+          setEmployeeLoading(true);
+          try {
+            const data = await getEmployeeDashboardAction();
+            if (!cancelled) setEmployeeData(data);
+          } catch {
+            if (!cancelled) toast.error("Impossible de charger votre tableau de bord.");
+          } finally {
+            if (!cancelled) setEmployeeLoading(false);
+          }
+          return;
+        }
+
+        setSites(batch.sites);
+        setStats(batch.stats);
+        setWeekly(batch.weekly);
+        setMonthly(batch.monthly);
       } catch {
-        if (!cancelled) toast.error("Impossible de vérifier votre rôle.");
+        if (!cancelled) toast.error("Impossible de charger le tableau de bord.");
       } finally {
         if (!cancelled) setRoleLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
+  // Reload data when site filter changes (after initial load)
+  const [initialLoaded, setInitialLoaded] = useState(false);
   useEffect(() => {
-    if (roleLoading || userRole === null || !isEmployee) return;
-    let cancelled = false;
-    (async () => {
-      setEmployeeLoading(true);
-      try {
-        const data = await getEmployeeDashboardAction();
-        if (!cancelled) setEmployeeData(data);
-      } catch {
-        if (!cancelled) toast.error("Impossible de charger votre tableau de bord.");
-      } finally {
-        if (!cancelled) setEmployeeLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [roleLoading, userRole, isEmployee]);
-
-  useEffect(() => {
-    if (roleLoading || userRole === null || isEmployee) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = await getSitesForFilterAction();
-        if (!cancelled) setSites(list);
-      } catch {
-        if (!cancelled) toast.error("Impossible de charger les sites.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [roleLoading, userRole, isEmployee]);
-
-  useEffect(() => {
-    if (roleLoading || userRole === null || isEmployee) return;
-    loadAdminData();
-  }, [roleLoading, userRole, isEmployee, loadAdminData]);
+    if (roleLoading) return;
+    if (!initialLoaded) { setInitialLoaded(true); return; }
+    if (isEmployee) return;
+    loadAdminData(siteIdForAction);
+  }, [siteIdForAction, roleLoading, isEmployee, loadAdminData, initialLoaded]);
 
   const weeklyChartData = useMemo(
     () =>
@@ -300,11 +355,7 @@ export default function DashboardPage() {
   );
 
   const monthlyChartData = useMemo(
-    () =>
-      monthly.map((row) => ({
-        date: row.date,
-        taux: row.rate,
-      })),
+    () => monthly.map((row) => ({ date: row.date, taux: row.rate })),
     [monthly],
   );
 
@@ -314,114 +365,94 @@ export default function DashboardPage() {
       return { text: "Non pointé" as const, sub: null as string | null };
     }
     if (!rec.clockOut) {
-      return {
-        text: `En service depuis ${fmtTime(rec.clockIn)}` as const,
-        sub: null as string | null,
-      };
+      return { text: `En service depuis ${fmtTime(rec.clockIn)}` as const, sub: null as string | null };
     }
     return { text: "Journée terminée" as const, sub: null as string | null };
   }, [employeeData]);
 
-  if (roleLoading) {
+  const [forceTutorial, setForceTutorial] = useState(false);
+
+  useEffect(() => {
+    if (isWelcome && tutorialLoaded && !roleLoading && !isEmployee) {
+      resetTutorial();
+      setForceTutorial(true);
+    }
+  }, [isWelcome, tutorialLoaded, roleLoading, isEmployee, resetTutorial]);
+
+  const showTutorial =
+    (tutorialLoaded && modeLoaded && !tutorialSeen && !roleLoading && !isEmployee) ||
+    forceTutorial;
+
+  if (roleLoading || !modeLoaded || !tutorialLoaded) {
     return <DashboardSkeleton mode="admin" />;
   }
 
+  /* ===== EMPLOYEE DASHBOARD ===== */
   if (isEmployee) {
-    if (employeeLoading) {
-      return <DashboardSkeleton mode="employee" />;
-    }
+    if (employeeLoading) return <DashboardSkeleton mode="employee" />;
 
     return (
       <>
-        <PageHeader title="Mon tableau de bord" />
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight">Mon espace</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Suivez votre pointage et vos heures de travail en un coup d&apos;œil.
+          </p>
+        </div>
 
         {!employeeData ? (
-          <Card className="border-dashed">
-            <CardContent className="pt-6 text-center text-sm text-muted-foreground">
-              Aucun profil employé actif n’est lié à votre compte. Contactez un
-              administrateur.
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl border-2 border-dashed bg-muted/20 p-12 text-center">
+            <Users className="mx-auto h-10 w-10 text-muted-foreground/60" />
+            <h3 className="mt-4 text-lg font-semibold">Profil non trouvé</h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Aucun profil employé actif n&apos;est lié à votre compte. Contactez
+              votre responsable pour être ajouté.
+            </p>
+          </div>
         ) : (
           <div className="space-y-6">
-            <Card className="mx-auto max-w-lg border bg-card">
-              <CardHeader className="text-center">
-                <CardTitle className="text-lg">Aujourd’hui</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center gap-4 pb-6">
-                <div className="text-center">
-                  <p className="text-2xl font-semibold">{todayStatus.text}</p>
-                  {todayStatus.sub ? (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {todayStatus.sub}
-                    </p>
-                  ) : null}
-                </div>
-                <Button variant="default" asChild>
-                  <Link href="/dashboard/attendance/clock">Mon pointage</Link>
+            <Card className="mx-auto max-w-lg overflow-hidden rounded-2xl border-0 shadow-md">
+              <div className="bg-gradient-to-br from-primary/10 to-primary/5 px-6 py-8 text-center">
+                <p className="text-sm font-medium text-muted-foreground">Aujourd&apos;hui</p>
+                <p className="mt-2 text-2xl font-bold">{todayStatus.text}</p>
+                {todayStatus.sub && (
+                  <p className="mt-1 text-sm text-muted-foreground">{todayStatus.sub}</p>
+                )}
+                <Button className="mt-5" asChild>
+                  <Link href="/dashboard/attendance/clock">Pointer maintenant</Link>
                 </Button>
-              </CardContent>
+              </div>
             </Card>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Card>
+              <Card className="rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-base">Cette semaine</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">
-                      {fmtMin(employeeData.weekSummary.totalMinutes)}
-                    </span>{" "}
-                    cette semaine
-                  </p>
-                  <p className="text-muted-foreground">
-                    {employeeData.weekSummary.daysWorked} jour
-                    {employeeData.weekSummary.daysWorked !== 1 ? "s" : ""}{" "}
-                    travaillé
-                    {employeeData.weekSummary.daysWorked !== 1 ? "s" : ""}
-                  </p>
+                  <p><span className="font-semibold">{fmtMin(employeeData.weekSummary.totalMinutes)}</span> travaillées</p>
+                  <p className="text-muted-foreground">{employeeData.weekSummary.daysWorked} jour{employeeData.weekSummary.daysWorked !== 1 ? "s" : ""} de présence</p>
                 </CardContent>
               </Card>
-
-              <Card>
+              <Card className="rounded-2xl">
                 <CardHeader>
                   <CardTitle className="text-base">Ce mois</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">
-                      {fmtMin(employeeData.monthSummary.totalMinutes)}
-                    </span>{" "}
-                    ce mois
-                  </p>
+                  <p><span className="font-semibold">{fmtMin(employeeData.monthSummary.totalMinutes)}</span> travaillées</p>
                   <p className="text-muted-foreground">
-                    {employeeData.monthSummary.daysWorked} jour
-                    {employeeData.monthSummary.daysWorked !== 1 ? "s" : ""}{" "}
-                    présent
-                    {employeeData.monthSummary.daysWorked !== 1 ? "s" : ""}
-                    {employeeData.monthSummary.daysLate > 0 && (
-                      <>
-                        {" "}
-                        · {employeeData.monthSummary.daysLate} retard
-                        {employeeData.monthSummary.daysLate !== 1 ? "s" : ""}
-                      </>
-                    )}
+                    {employeeData.monthSummary.daysWorked} jour{employeeData.monthSummary.daysWorked !== 1 ? "s" : ""} · {employeeData.monthSummary.daysLate} retard{employeeData.monthSummary.daysLate !== 1 ? "s" : ""}
                   </p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card>
-              <CardContent className="flex flex-col gap-3 py-6 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm">
-                  <span className="font-medium">
-                    {employeeData.pendingLeaves}
-                  </span>{" "}
-                  demande
-                  {employeeData.pendingLeaves !== 1 ? "s" : ""} de congé en
-                  attente
-                </p>
+            <Card className="rounded-2xl">
+              <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">{employeeData.pendingLeaves} demande{employeeData.pendingLeaves !== 1 ? "s" : ""} de congé en attente</p>
+                  <p className="text-xs text-muted-foreground">Suivez et gérez vos congés facilement.</p>
+                </div>
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/dashboard/leaves">Voir les congés</Link>
                 </Button>
@@ -433,212 +464,350 @@ export default function DashboardPage() {
     );
   }
 
-  const présentsToday =
-    stats !== null ? stats.present + stats.completed : 0;
+  /* ===== ADMIN / MANAGER DASHBOARD ===== */
+  const présentsToday = stats !== null ? stats.present + stats.completed : 0;
 
   return (
     <>
-      <PageHeader
-        title="Tableau de bord"
-        description={formatTodayDescription()}
-      >
-        <Select
-          value={siteFilter}
-          onValueChange={(v) => setSiteFilter(v || ALL_SITES)}
-        >
-          <SelectTrigger className="w-[200px] min-w-0" size="sm">
-            <SelectValue placeholder="Site" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_SITES}>Tous les sites</SelectItem>
-            {sites.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </PageHeader>
+      {showTutorial && (
+        <OnboardingTutorial
+          onComplete={() => {
+            markTutorialSeen();
+            setForceTutorial(false);
+          }}
+        />
+      )}
+
+      {/* Header */}
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatTodayDescription()} — Vue d&apos;ensemble de votre activité.
+            </p>
+          </div>
+          {sites.length > 0 && (
+            <Select
+              value={siteFilter}
+              onValueChange={(v) => setSiteFilter(v || ALL_SITES)}
+            >
+              <SelectTrigger className="w-[180px] min-w-0 rounded-xl" size="sm">
+                <SelectValue placeholder="Filtrer par site" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_SITES}>Tous les sites</SelectItem>
+                {sites.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Mode switch — bien visible */}
+        <div data-tour="mode-switch" className="mt-4 flex items-center justify-between rounded-2xl border bg-muted/30 px-4 py-3">
+          <div className="mr-4 min-w-0">
+            <p className="text-sm font-medium">Mode d&apos;affichage</p>
+            <p className="text-xs text-muted-foreground">
+              {mode === "simple"
+                ? "Affiche uniquement l'essentiel pour un usage rapide."
+                : "Affiche tous les détails et graphiques."}
+            </p>
+          </div>
+          <ModeSwitch mode={mode} onChange={setMode} />
+        </div>
+      </div>
 
       {adminLoading && !stats ? (
         <DashboardSkeleton mode="admin" />
       ) : (
-        <>
-          <div
-            className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 ${adminLoading ? "opacity-60" : ""}`}
-          >
-            <AdminStatCard
+        <div className={adminLoading ? "opacity-60 transition-opacity" : ""}>
+          {/* ===== KPI CARDS ===== */}
+          <div data-tour="kpi-cards" className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            <StatCard
               label="Employés actifs"
+              subtitle="Personnes enregistrées dans votre entreprise"
               value={stats?.totalEmployees ?? "—"}
               icon={Users}
               color="blue"
             />
-            <AdminStatCard
+            <StatCard
               label="Présents"
+              subtitle="Employés qui ont déjà pointé aujourd'hui"
               value={stats != null ? présentsToday : "—"}
               icon={UserCheck}
               color="green"
             />
-            <AdminStatCard
+            <StatCard
               label="En retard"
+              subtitle="Arrivés après l'heure prévue"
               value={stats?.late ?? "—"}
               icon={Clock}
               color="amber"
             />
-            <AdminStatCard
+            <StatCard
               label="Absents"
+              subtitle="Non pointés ou signalés absents"
               value={stats?.absent ?? "—"}
               icon={UserX}
               color="red"
             />
-            <AdminStatCard
-              label="Taux de présence"
-              value={stats != null ? `${stats.attendanceRate} %` : "—"}
-              icon={TrendingUp}
-              color="purple"
-            />
-            <AdminStatCard
-              label="Heures moy."
-              value={stats != null ? fmtMin(stats.avgWorkedMinutes) : "—"}
-              icon={Timer}
-              color="indigo"
-            />
-            <AdminStatCard
-              label="Congés en attente"
-              value={stats?.pendingLeaves ?? "—"}
-              icon={Calendar}
-              color="orange"
-            />
-            <AdminStatCard
-              label="Corrections en attente"
-              value={stats?.pendingCorrections ?? "—"}
-              icon={FileEdit}
-              color="slate"
-            />
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tendance hebdomadaire</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={weeklyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                      <Tooltip
-                        contentStyle={{ borderRadius: 8 }}
-                        labelFormatter={(l) => String(l)}
-                        formatter={(value, name) => [
-                          Number(value ?? 0),
-                          name === "presents" ? "Présents" : "Retards",
-                        ]}
-                      />
-                      <Bar
-                        dataKey="presents"
-                        name="presents"
-                        fill="#22c55e"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="retards"
-                        name="Retards"
-                        fill="#f59e0b"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+          {/* ===== ADVANCED MODE — Extra KPIs ===== */}
+          {mode === "advanced" && (
+            <div className="mt-3 grid gap-3 sm:mt-4 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+              <StatCard
+                label="Taux de présence"
+                subtitle="Pourcentage d'employés présents aujourd'hui"
+                value={stats != null ? `${stats.attendanceRate} %` : "—"}
+                icon={TrendingUp}
+                color="purple"
+              />
+              <StatCard
+                label="Heures moy."
+                subtitle="Durée moyenne travaillée par employé"
+                value={stats != null ? fmtMin(stats.avgWorkedMinutes) : "—"}
+                icon={Timer}
+                color="indigo"
+              />
+              <StatCard
+                label="Congés en attente"
+                subtitle="Demandes à valider"
+                value={stats?.pendingLeaves ?? "—"}
+                icon={Calendar}
+                color="orange"
+              />
+              <StatCard
+                label="Corrections"
+                subtitle="Demandes de correction de pointage"
+                value={stats?.pendingCorrections ?? "—"}
+                icon={FileEdit}
+                color="slate"
+              />
+            </div>
+          )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Taux de présence mensuel</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={monthlyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 11 }}
-                        tickFormatter={(v) =>
-                          new Date(`${String(v)}T12:00:00`).toLocaleDateString(
-                            "fr-FR",
-                            { day: "numeric", month: "short" },
-                          )
-                        }
-                      />
-                      <YAxis
-                        domain={[0, 100]}
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(v) => `${v} %`}
-                      />
-                      <Tooltip
-                        contentStyle={{ borderRadius: 8 }}
-                        labelFormatter={(v) =>
-                          new Date(`${String(v)}T12:00:00`).toLocaleDateString(
-                            "fr-FR",
-                            {
+          {/* ===== SIMPLE MODE — Quick actions ===== */}
+          {mode === "simple" && (
+            <div data-tour="quick-actions" className="mt-6 space-y-4 sm:mt-8">
+              <div>
+                <h2 className="text-lg font-semibold">Commencer rapidement</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Accédez aux outils les plus importants en un clic.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <QuickAction
+                  icon={UserPlus}
+                  title="Ajouter un employé"
+                  description="Enregistrez les personnes qui travaillent chez vous."
+                  href="/dashboard/employees/new"
+                  color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                />
+                <QuickAction
+                  icon={MapPin}
+                  title="Configurer un site"
+                  description="Définissez les lieux autorisés pour le pointage."
+                  href="/dashboard/sites/new"
+                  color="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                />
+                <QuickAction
+                  icon={Clock}
+                  title="Pointage en direct"
+                  description="Voyez en temps réel qui a pointé aujourd'hui."
+                  href="/dashboard/attendance"
+                  color="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+                />
+                <QuickAction
+                  icon={Calendar}
+                  title="Gérer les congés"
+                  description="Suivez et validez les demandes de congé facilement."
+                  href="/dashboard/leaves"
+                  color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                />
+                <QuickAction
+                  icon={BarChart3}
+                  title="Voir les rapports"
+                  description="Consultez les statistiques de présence et retards."
+                  href="/dashboard/reports"
+                  color="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
+                />
+                <QuickAction
+                  icon={Users}
+                  title="Liste des employés"
+                  description="Consultez et gérez tous vos employés."
+                  href="/dashboard/employees"
+                  color="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ===== CHARTS — Advanced only ===== */}
+          {mode === "advanced" && (
+            <div className="mt-6 grid gap-4 sm:mt-8 sm:gap-6 lg:grid-cols-2">
+              <Card className="overflow-hidden rounded-2xl border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">
+                    Tendance hebdomadaire
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Présents et retards jour par jour, cette semaine.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[280px] w-full">
+                    <LazyResponsiveContainer width="100%" height={280}>
+                      <LazyBarChart data={weeklyChartData}>
+                        <LazyCartesianGrid strokeDasharray="3 3" className="stroke-muted/60" />
+                        <LazyXAxis dataKey="day" tick={{ fontSize: 12 }} />
+                        <LazyYAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <LazyTooltip
+                          contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb" }}
+                          labelFormatter={(l) => String(l)}
+                          formatter={(value, name) => [
+                            Number(value ?? 0),
+                            name === "presents" ? "Présents" : "Retards",
+                          ]}
+                        />
+                        <LazyBar dataKey="presents" name="presents" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                        <LazyBar dataKey="retards" name="Retards" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                      </LazyBarChart>
+                    </LazyResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-2xl border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">
+                    Taux de présence mensuel
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Évolution du pourcentage de présence sur le mois.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[280px] w-full">
+                    <LazyResponsiveContainer width="100%" height={280}>
+                      <LazyLineChart data={monthlyChartData}>
+                        <LazyCartesianGrid strokeDasharray="3 3" className="stroke-muted/60" />
+                        <LazyXAxis
+                          dataKey="date"
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v) =>
+                            new Date(`${String(v)}T12:00:00`).toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "short",
+                            })
+                          }
+                        />
+                        <LazyYAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
+                        <LazyTooltip
+                          contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb" }}
+                          labelFormatter={(v) =>
+                            new Date(`${String(v)}T12:00:00`).toLocaleDateString("fr-FR", {
                               weekday: "long",
                               day: "numeric",
                               month: "long",
                               year: "numeric",
-                            },
-                          )
-                        }
-                        formatter={(value) => [
-                          `${Number(value ?? 0)} %`,
-                          "Taux",
-                        ]}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="taux"
-                        name="Taux de présence"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                            })
+                          }
+                          formatter={(value) => [`${Number(value ?? 0)} %`, "Taux"]}
+                        />
+                        <LazyLine
+                          type="monotone"
+                          dataKey="taux"
+                          name="Taux de présence"
+                          stroke="#6366f1"
+                          strokeWidth={2.5}
+                          dot={{ r: 3, fill: "#6366f1" }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LazyLineChart>
+                    </LazyResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ===== QUICK LINKS — both modes ===== */}
+          <div data-tour="quick-links" className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-3">
+            <Link
+              href="/dashboard/attendance"
+              className="group flex items-center gap-3 rounded-2xl border bg-white p-4 transition-all hover:border-green-200 hover:shadow-md dark:bg-card"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Pointage en direct</p>
+                <p className="text-xs text-muted-foreground">Voir qui est présent</p>
+              </div>
+            </Link>
+            <Link
+              href="/dashboard/reports"
+              className="group flex items-center gap-3 rounded-2xl border bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-md dark:bg-card"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Rapports</p>
+                <p className="text-xs text-muted-foreground">Statistiques détaillées</p>
+              </div>
+            </Link>
+            <Link
+              href="/dashboard/leaves"
+              className="group flex items-center gap-3 rounded-2xl border bg-white p-4 transition-all hover:border-amber-200 hover:shadow-md dark:bg-card"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Congés</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.pendingLeaves ?? 0} en attente
+                </p>
+              </div>
+            </Link>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <Card className="transition-colors hover:bg-muted/40">
-              <CardContent className="flex flex-col gap-3 pt-6">
-                <p className="text-sm font-medium">Pointage en direct</p>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/attendance">Ouvrir</Link>
-                </Button>
-              </CardContent>
-            </Card>
-            <Card className="transition-colors hover:bg-muted/40">
-              <CardContent className="flex flex-col gap-3 pt-6">
-                <p className="text-sm font-medium">Rapports</p>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/reports">Ouvrir</Link>
-                </Button>
-              </CardContent>
-            </Card>
-            <Card className="transition-colors hover:bg-muted/40">
-              <CardContent className="flex flex-col gap-3 pt-6">
-                <p className="text-sm font-medium">Congés en attente</p>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/leaves">Ouvrir</Link>
-                </Button>
-              </CardContent>
-            </Card>
+          {/* ===== Help bar ===== */}
+          <div data-tour="help-bar" className="mt-6 flex flex-col items-start gap-3 rounded-2xl border border-dashed bg-muted/20 p-4 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <HelpCircle className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Besoin d&apos;aide ?</p>
+                <p className="text-xs text-muted-foreground">
+                  Suivez le guide de prise en main ou consultez le centre d&apos;aide.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-xl"
+                onClick={() => {
+                  resetTutorial();
+                  setForceTutorial(true);
+                }}
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Revoir le guide
+              </Button>
+              <Button variant="ghost" size="sm" className="rounded-xl" asChild>
+                <Link href="/dashboard/help">Centre d&apos;aide</Link>
+              </Button>
+            </div>
           </div>
-        </>
+        </div>
       )}
     </>
   );

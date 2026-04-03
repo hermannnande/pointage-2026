@@ -17,6 +17,14 @@ import { Separator } from "@/components/ui/separator";
 
 import { logoutAction } from "@/app/(auth)/actions";
 
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Propriétaire",
+  admin: "Administrateur",
+  manager: "Responsable",
+  hr: "Gestionnaire RH",
+  employee: "Employé",
+};
+
 function NavItemLink({
   href,
   icon: Icon,
@@ -43,13 +51,13 @@ function NavItemLink({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
         isActive
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+          ? "bg-primary/10 text-primary shadow-sm"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
       )}
     >
-      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <Icon className={cn("h-[18px] w-[18px] shrink-0", isActive && "text-primary")} />
       {title}
       {badge && (
         <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
@@ -76,27 +84,31 @@ export function Sidebar() {
     .slice(0, 2)
     .toUpperCase();
 
+  const roleLabel = ROLE_LABELS[tenant.role] ?? tenant.role;
+
   return (
     <aside className="hidden w-64 shrink-0 border-r bg-sidebar lg:flex lg:flex-col">
-      <div className="flex h-16 items-center gap-2.5 border-b px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <Clock className="h-4 w-4 text-primary-foreground" />
+      {/* Logo */}
+      <div className="flex h-16 items-center gap-3 border-b px-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
+          <Clock className="h-4.5 w-4.5 text-primary-foreground" />
         </div>
         <div className="flex flex-col">
           <span className="text-sm font-bold tracking-tight text-sidebar-foreground">
             OControle
           </span>
-          <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+          <span className="max-w-[140px] truncate text-[10px] text-muted-foreground">
             {tenant.company.name}
           </span>
         </div>
       </div>
 
+      {/* Nav */}
       <ScrollArea className="flex-1 px-3 py-4">
-        <nav className="space-y-6">
+        <nav data-tour="sidebar-nav" className="space-y-6">
           {DASHBOARD_NAV.map((section) => (
             <div key={section.title}>
-              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
                 {section.title}
               </p>
               <div className="space-y-0.5">
@@ -116,14 +128,15 @@ export function Sidebar() {
         </nav>
       </ScrollArea>
 
+      {/* User */}
       <div className="border-t p-3">
-        <div className="mb-3 flex items-center gap-3 px-3 py-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        <div className="mb-3 flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
             {initials}
           </div>
-          <div className="flex-1 truncate">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{tenant.user.fullName}</p>
-            <p className="truncate text-xs text-muted-foreground">{tenant.role === "owner" ? "Propriétaire" : tenant.role}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{roleLabel}</p>
           </div>
         </div>
         <Separator className="mb-2" />
@@ -131,7 +144,7 @@ export function Sidebar() {
           <Button
             type="submit"
             variant="ghost"
-            className="w-full justify-start gap-3 text-sm text-muted-foreground"
+            className="w-full justify-start gap-3 rounded-xl text-sm text-muted-foreground hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />
             Déconnexion

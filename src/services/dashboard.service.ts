@@ -68,30 +68,43 @@ export async function getDashboardStats(companyId: string, siteId?: string) {
 export async function getWeeklyTrend(companyId: string, siteId?: string) {
   const today = new Date();
   const monday = startOfWeek(today);
+  const sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+  const sundayEnd = new Date(Date.UTC(sunday.getFullYear(), sunday.getMonth(), sunday.getDate()));
+  const mondayStart = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate()));
   const siteFilter = siteId ? { siteId } : {};
 
-  const days: { date: string; label: string; present: number; late: number; absent: number }[] = [];
+  const [records, totalEmp] = await Promise.all([
+    prisma.attendanceRecord.findMany({
+      where: { companyId, date: { gte: mondayStart, lte: sundayEnd }, ...siteFilter },
+      select: { date: true, isLate: true },
+    }),
+    prisma.employee.count({
+      where: { companyId, isActive: true, ...siteFilter },
+    }),
+  ]);
 
+  const byDate = new Map<string, { present: number; late: number }>();
+  for (const r of records) {
+    const key = new Date(r.date).toISOString().slice(0, 10);
+    const entry = byDate.get(key) ?? { present: 0, late: 0 };
+    entry.present++;
+    if (r.isLate) entry.late++;
+    byDate.set(key, entry);
+  }
+
+  const days: { date: string; label: string; present: number; late: number; absent: number }[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(d.getDate() + i);
-    const dateOnly = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-
-    const records = await prisma.attendanceRecord.findMany({
-      where: { companyId, date: dateOnly, ...siteFilter },
-      select: { status: true, isLate: true },
-    });
-
-    const totalEmp = await prisma.employee.count({
-      where: { companyId, isActive: true, ...siteFilter },
-    });
-
+    const key = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+    const entry = byDate.get(key) ?? { present: 0, late: 0 };
     days.push({
-      date: dateOnly.toISOString().slice(0, 10),
+      date: key,
       label: d.toLocaleDateString("fr-FR", { weekday: "short" }),
-      present: records.length,
-      late: records.filter((r) => r.isLate).length,
-      absent: Math.max(0, totalEmp - records.length),
+      present: entry.present,
+      late: entry.late,
+      absent: Math.max(0, totalEmp - entry.present),
     });
   }
 
