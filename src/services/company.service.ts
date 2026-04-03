@@ -204,6 +204,7 @@ export async function createSiteForCompany(params: {
   city?: string;
   latitude?: number;
   longitude?: number;
+  geofenceRadius?: number;
   workStartTime?: string;
   workEndTime?: string;
 }) {
@@ -216,6 +217,7 @@ export async function createSiteForCompany(params: {
         city: params.city || null,
         latitude: params.latitude || null,
         longitude: params.longitude || null,
+        geofenceRadius: params.geofenceRadius ?? 50,
         workStartTime: params.workStartTime || "08:00",
         workEndTime: params.workEndTime || "17:00",
       },

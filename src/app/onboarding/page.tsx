@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -8,9 +8,11 @@ import {
   Building2,
   CheckCircle2,
   Clock,
+  CrosshairIcon,
   Globe2,
   Loader2,
   MapPin,
+  Navigation,
   Rocket,
   Sparkles,
   Store,
@@ -51,6 +53,16 @@ const sectorIcons: Record<string, string> = {
   services: "💼", technology: "💻", agriculture: "🌱", other: "📦",
 };
 
+const RADIUS_OPTIONS = [
+  { value: 50, label: "50 m — Petit local / boutique" },
+  { value: 100, label: "100 m — Bureau / magasin" },
+  { value: 200, label: "200 m — Bâtiment / entreprise" },
+  { value: 500, label: "500 m — Grand site / campus" },
+  { value: 1000, label: "1 km — Zone industrielle" },
+];
+
+type GeoStatus = "idle" | "loading" | "success" | "error" | "denied";
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>("company");
@@ -59,7 +71,51 @@ export default function OnboardingPage() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>("CI");
   const [companyName, setCompanyName] = useState("");
 
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoAddress, setGeoAddress] = useState<string>("");
+  const [geofenceRadius, setGeofenceRadius] = useState(50);
+
   const currentIndex = stepsMeta.findIndex((s) => s.key === currentStep);
+
+  const requestGeolocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setGeoStatus("error");
+      return;
+    }
+
+    setGeoStatus("loading");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setCoords({ lat, lng });
+        setGeoStatus("success");
+
+        try {
+          const resp = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fr`,
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            const addr = data.display_name;
+            if (addr) setGeoAddress(addr.split(",").slice(0, 3).join(",").trim());
+          }
+        } catch {
+          // Non-bloquant
+        }
+      },
+      (err) => {
+        if (err.code === 1) {
+          setGeoStatus("denied");
+        } else {
+          setGeoStatus("error");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  }, []);
 
   async function handleCompanySubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -108,6 +164,9 @@ export default function OnboardingPage() {
         siteName: formData.get("siteName") as string,
         address: (formData.get("address") as string) || undefined,
         city: (formData.get("siteCity") as string) || undefined,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
+        geofenceRadius,
         workStartTime: (formData.get("workStartTime") as string) || "08:00",
         workEndTime: (formData.get("workEndTime") as string) || "17:00",
       });
@@ -307,10 +366,10 @@ export default function OnboardingPage() {
                 <Store className="h-7 w-7 text-primary" />
               </div>
               <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-                Votre premier lieu de travail
+                Localisez votre lieu de travail
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Boutique, bureau, atelier — là où vos employés travaillent
+                La géolocalisation permet de vérifier la présence de vos employés sur site
               </p>
             </div>
 
@@ -338,15 +397,157 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
+              {/* Géolocalisation */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">
+                  <Navigation className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                  Position du site
+                </Label>
+
+                {geoStatus === "idle" && (
+                  <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-5 text-center">
+                    <CrosshairIcon className="mx-auto h-8 w-8 text-primary/60" />
+                    <p className="mt-2 text-sm font-medium">
+                      Localisez votre site automatiquement
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Placez-vous dans votre boutique, bureau ou local et cliquez ci-dessous
+                    </p>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      className="mt-3 gap-2"
+                      onClick={requestGeolocation}
+                    >
+                      <Navigation className="h-4 w-4" />
+                      Me localiser maintenant
+                    </Button>
+                  </div>
+                )}
+
+                {geoStatus === "loading" && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                    <p className="mt-2 text-sm font-medium">Localisation en cours...</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Autorisez l&apos;accès à votre position dans votre navigateur
+                    </p>
+                  </div>
+                )}
+
+                {geoStatus === "success" && coords && (
+                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/40">
+                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                          Position enregistrée
+                        </p>
+                        <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
+                          {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+                        </p>
+                        {geoAddress && (
+                          <p className="mt-1 truncate text-xs text-green-700 dark:text-green-300">
+                            {geoAddress}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 text-xs text-green-700 hover:text-green-800 dark:text-green-300"
+                        onClick={requestGeolocation}
+                      >
+                        Actualiser
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {geoStatus === "denied" && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Accès à la position refusé
+                    </p>
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      Autorisez la localisation dans les paramètres de votre navigateur, ou saisissez l&apos;adresse manuellement ci-dessous.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setGeoStatus("idle")}
+                    >
+                      Réessayer
+                    </Button>
+                  </div>
+                )}
+
+                {geoStatus === "error" && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                      Impossible de vous localiser
+                    </p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      Vérifiez votre connexion ou saisissez l&apos;adresse manuellement.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setGeoStatus("idle")}
+                    >
+                      Réessayer
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Rayon de géofence */}
+              {coords && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">
+                    <CrosshairIcon className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                    Rayon de couverture
+                  </Label>
+                  <Select
+                    value={String(geofenceRadius)}
+                    onValueChange={(v) => setGeofenceRadius(Number(v))}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RADIUS_OPTIONS.map((r) => (
+                        <SelectItem key={r.value} value={String(r.value)}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Seuls les pointages effectués dans ce rayon seront validés
+                  </p>
+                </div>
+              )}
+
+              {/* Adresse manuelle (alternative ou complément) */}
               <div className="space-y-1.5">
                 <Label htmlFor="address" className="text-sm font-medium">
                   <MapPin className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-                  Adresse
+                  Adresse {!coords && <span className="text-xs font-normal text-muted-foreground">(si pas de géolocalisation)</span>}
                 </Label>
                 <Input
                   id="address"
                   name="address"
                   placeholder="Ex: Rue des Jardins, Cocody"
+                  defaultValue={geoAddress}
                   disabled={loading}
                   className="h-11"
                 />

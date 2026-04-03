@@ -99,6 +99,7 @@ export async function createSiteAction(
       city: parsed.data.city,
       latitude: parsed.data.latitude,
       longitude: parsed.data.longitude,
+      geofenceRadius: parsed.data.geofenceRadius,
       workStartTime: parsed.data.workStartTime,
       workEndTime: parsed.data.workEndTime,
     });

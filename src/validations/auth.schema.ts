@@ -45,6 +45,7 @@ export const onboardingSiteSchema = z.object({
   city: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  geofenceRadius: z.number().min(10).max(5000).default(50),
   workStartTime: z.string().default("08:00"),
   workEndTime: z.string().default("17:00"),
 });
