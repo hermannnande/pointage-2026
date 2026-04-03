@@ -62,6 +62,20 @@ export async function signupAction(
     phone: parsed.data.phone,
   });
 
+  if (!data.session) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+
+    if (signInError) {
+      return {
+        success: false,
+        error: "Compte créé mais connexion automatique échouée. Veuillez vous connecter.",
+      };
+    }
+  }
+
   return { success: true, data: { userId: user.id } };
 }
 
