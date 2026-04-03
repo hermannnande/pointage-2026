@@ -7,7 +7,10 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  KeyRound,
   Rocket,
+  SlidersHorizontal,
+  Smartphone,
   Users,
   X,
 } from "lucide-react";
@@ -33,6 +36,15 @@ const STEPS = [
     bg: "bg-blue-50",
   },
   {
+    target: "[data-tour='mode-switch']",
+    icon: SlidersHorizontal,
+    title: "Vue simple ou avancee",
+    description:
+      "Vous pouvez basculer entre la vue simple (essentiel uniquement) et la vue avancee (tous les details et graphiques). La vue simple est ideale pour commencer.",
+    color: "text-indigo-600",
+    bg: "bg-indigo-50",
+  },
+  {
     target: "[data-tour='quick-actions']",
     icon: Building2,
     title: "Actions rapides",
@@ -40,6 +52,24 @@ const STEPS = [
       "Ces raccourcis vous permettent d'ajouter un employe, configurer un site ou voir les pointages en un clic.",
     color: "text-purple-600",
     bg: "bg-purple-50",
+  },
+  {
+    target: null,
+    icon: KeyRound,
+    title: "Comment vos employes se connectent",
+    description:
+      "Quand vous creez un employe, vous lui definissez un mot de passe. Chaque site a un code unique (visible dans Sites). L'employe se connecte sur la page /employe avec : le code du site + son matricule + son mot de passe.",
+    color: "text-teal-600",
+    bg: "bg-teal-50",
+  },
+  {
+    target: null,
+    icon: Smartphone,
+    title: "Le pointage de vos employes",
+    description:
+      "Une fois connecte, l'employe accede a son espace personnel ou il peut pointer son arrivee, sa pause et sa sortie en un seul clic. La geolocalisation verifie automatiquement qu'il est au bon endroit.",
+    color: "text-cyan-600",
+    bg: "bg-cyan-50",
   },
   {
     target: "[data-tour='quick-links']",
@@ -73,7 +103,7 @@ const STEPS = [
     icon: CheckCircle2,
     title: "Vous etes pret !",
     description:
-      "Vous connaissez maintenant l'essentiel. Commencez par ajouter vos employes et configurer vos sites.",
+      "Vous connaissez maintenant l'essentiel. Commencez par ajouter vos employes et configurer vos sites. Donnez-leur leur code de site, matricule et mot de passe pour qu'ils puissent pointer.",
     color: "text-green-600",
     bg: "bg-green-50",
   },
