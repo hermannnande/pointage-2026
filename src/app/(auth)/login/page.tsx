@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { Clock, Loader2 } from "lucide-react";
 
@@ -25,7 +25,6 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
   const errorParam = searchParams.get("error");
@@ -53,8 +52,7 @@ function LoginForm() {
       return;
     }
 
-    router.push(redirect || "/dashboard");
-    router.refresh();
+    window.location.href = redirect || "/dashboard";
   }
 
   async function handleOAuth(provider: "google" | "facebook") {

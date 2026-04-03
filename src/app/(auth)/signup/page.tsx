@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { Clock, Loader2 } from "lucide-react";
 
@@ -25,7 +24,6 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export default function SignupPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +50,7 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/onboarding");
-    router.refresh();
+    window.location.href = "/onboarding";
   }
 
   async function handleOAuth(provider: "google" | "facebook") {
