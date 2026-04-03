@@ -12,6 +12,15 @@ import { TenantProvider } from "@/components/providers/tenant-provider";
 
 export const dynamic = "force-dynamic";
 
+type SubStatusResult = Awaited<ReturnType<typeof checkSubscriptionStatus>>;
+
+const DEFAULT_SUB_STATUS: SubStatusResult = {
+  isAccessible: true,
+  status: "TRIALING",
+  daysRemaining: 14,
+  message: "Essai gratuit en cours",
+};
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -26,7 +35,13 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const tenantContext = await getTenantContext(user.id);
+  let tenantContext;
+  try {
+    tenantContext = await getTenantContext(user.id);
+  } catch (err) {
+    console.error("Erreur getTenantContext dans dashboard layout:", err);
+    redirect("/onboarding");
+  }
 
   if (!tenantContext) {
     redirect("/onboarding");
@@ -36,7 +51,12 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  const subStatus = await checkSubscriptionStatus(tenantContext.companyId);
+  let subStatus = DEFAULT_SUB_STATUS;
+  try {
+    subStatus = await checkSubscriptionStatus(tenantContext.companyId);
+  } catch (err) {
+    console.error("Erreur checkSubscriptionStatus:", err);
+  }
 
   const headersList = await headers();
   const pathname = headersList.get("x-next-pathname") ?? "";
