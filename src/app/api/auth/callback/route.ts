@@ -3,11 +3,11 @@ import type { NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateUser } from "@/services/auth.service";
+import { getTenantContext } from "@/services/tenant.service";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/onboarding";
 
   if (code) {
     const supabase = await createClient();
@@ -30,11 +30,20 @@ export async function GET(request: NextRequest) {
             phone: user.user_metadata?.phone || user.phone,
           });
         } catch {
-          // Non-bloquant : l'utilisateur est connecté même si la synchro Prisma échoue.
+          // Non-bloquant
+        }
+
+        try {
+          const ctx = await getTenantContext(user.id);
+          if (ctx && ctx.company.onboardingStep >= 3) {
+            return NextResponse.redirect(`${origin}/dashboard`);
+          }
+        } catch {
+          // Non-bloquant
         }
       }
 
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}/onboarding`);
     }
   }
 

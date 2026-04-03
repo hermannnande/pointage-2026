@@ -23,6 +23,18 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  const code = request.nextUrl.searchParams.get("code");
+  const pathname = request.nextUrl.pathname;
+  const isCallbackRoute = pathname === "/api/auth/callback";
+
+  if (code && !isCallbackRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/api/auth/callback";
+    url.searchParams.set("code", code);
+    url.searchParams.delete("next");
+    return NextResponse.redirect(url);
+  }
+
   const supabase = createServerClient(
     supabaseUrl,
     supabaseAnonKey,
@@ -47,8 +59,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
 
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/forgot-password");
   const isResetPage = pathname.startsWith("/reset-password");
