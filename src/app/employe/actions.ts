@@ -11,7 +11,6 @@ import {
 
 interface LoginInput {
   siteCode: string;
-  matricule: string;
   password: string;
 }
 
@@ -22,9 +21,9 @@ interface LoginResult {
 
 export async function employeeLoginAction(input: LoginInput): Promise<LoginResult> {
   try {
-    const { siteCode, matricule, password } = input;
+    const { siteCode, password } = input;
 
-    if (!siteCode || !matricule || !password) {
+    if (!siteCode || !password) {
       return { success: false, error: "Tous les champs sont obligatoires." };
     }
 
@@ -41,26 +40,21 @@ export async function employeeLoginAction(input: LoginInput): Promise<LoginResul
       return { success: false, error: "Ce site n'est plus actif. Contactez votre responsable." };
     }
 
-    const employee = await prisma.employee.findFirst({
+    const employees = await prisma.employee.findMany({
       where: {
         companyId: site.companyId,
         siteId: site.id,
-        matricule: { equals: matricule.trim(), mode: "insensitive" },
         isActive: true,
+        passwordHash: { not: null },
       },
     });
 
+    const employee = employees.find((emp) =>
+      emp.passwordHash ? verifyPassword(password, emp.passwordHash) : false,
+    );
+
     if (!employee) {
-      return { success: false, error: "Matricule incorrect ou employé non assigné à ce site." };
-    }
-
-    if (!employee.passwordHash) {
-      return { success: false, error: "Votre compte n'a pas encore de mot de passe. Contactez votre responsable." };
-    }
-
-    const isValid = verifyPassword(password, employee.passwordHash);
-    if (!isValid) {
-      return { success: false, error: "Mot de passe incorrect." };
+      return { success: false, error: "Code du site ou mot de passe incorrect." };
     }
 
     const token = createSessionToken({

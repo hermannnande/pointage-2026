@@ -1,54 +1,209 @@
 import { APP_URL } from "@/lib/constants";
 
-const CHARIOW_API_URL = process.env.CHARIOW_API_URL || "https://api.chariow.com/v1";
-const CHARIOW_SECRET_KEY = process.env.CHARIOW_SECRET_KEY || "";
+const CHARIOW_API_URL =
+  process.env.CHARIOW_API_URL || "https://api.chariow.com/v1";
+const CHARIOW_API_KEY = process.env.CHARIOW_API_KEY || "";
 const CHARIOW_WEBHOOK_SECRET = process.env.CHARIOW_WEBHOOK_SECRET || "";
+
+function getPublicAppUrl(): string {
+  const candidates = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.APP_URL,
+    APP_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined,
+    "https://www.ocontrole.com",
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    try {
+      const url = new URL(candidate);
+      if (process.env.NODE_ENV === "production" && url.hostname === "localhost") {
+        continue;
+      }
+      return url.origin;
+    } catch {
+      continue;
+    }
+  }
+  return "https://www.ocontrole.com";
+}
+
+const PRODUCT_IDS: Record<string, string | undefined> = {
+  starter_MONTHLY: process.env.CHARIOW_PRODUCT_STARTER_MONTHLY,
+  starter_YEARLY: process.env.CHARIOW_PRODUCT_STARTER_YEARLY,
+  growth_MONTHLY: process.env.CHARIOW_PRODUCT_GROWTH_MONTHLY,
+  growth_YEARLY: process.env.CHARIOW_PRODUCT_GROWTH_YEARLY,
+  business_MONTHLY: process.env.CHARIOW_PRODUCT_BUSINESS_MONTHLY,
+  business_YEARLY: process.env.CHARIOW_PRODUCT_BUSINESS_YEARLY,
+};
+
+export function getChariowProductId(
+  planSlug: string,
+  billingCycle: string,
+): string | null {
+  return PRODUCT_IDS[`${planSlug}_${billingCycle}`] || null;
+}
 
 interface ChariowCheckoutParams {
   companyId: string;
+  planId: string;
+  planSlug: string;
   planName: string;
-  amount: number;
-  currency: string;
   billingCycle: string;
   customerEmail: string;
   customerName: string;
+  customerPhone?: string;
+}
+
+interface ChariowSale {
+  id: string;
+  status: string;
+  amount?: {
+    value: number;
+    currency: string;
+  };
+  payment?: {
+    status?: string;
+  };
+  custom_metadata?: {
+    company_id?: string;
+    plan_id?: string;
+    plan_slug?: string;
+    billing_cycle?: string;
+  };
+  product?: {
+    id?: string;
+    name?: string;
+  };
+  customer?: {
+    email?: string;
+  };
+  completed_at?: string | null;
+  created_at?: string | null;
+}
+
+export function getPlanFromProductId(
+  productId: string,
+): { planSlug: string; billingCycle: "MONTHLY" | "YEARLY" } | null {
+  for (const [key, value] of Object.entries(PRODUCT_IDS)) {
+    if (value !== productId) continue;
+    const [planSlug, billingCycle] = key.split("_");
+    if (!planSlug || (billingCycle !== "MONTHLY" && billingCycle !== "YEARLY")) {
+      continue;
+    }
+    return { planSlug, billingCycle };
+  }
+  return null;
 }
 
 export async function createCheckoutSession(params: ChariowCheckoutParams) {
-  const { companyId, planName, amount, currency, billingCycle, customerEmail, customerName } = params;
+  const {
+    companyId,
+    planId,
+    planSlug,
+    planName,
+    billingCycle,
+    customerEmail,
+    customerName,
+    customerPhone,
+  } = params;
 
-  const response = await fetch(`${CHARIOW_API_URL}/sales`, {
+  if (!CHARIOW_API_KEY) {
+    throw new Error(
+      "Clé API Chariow non configurée. Ajoutez CHARIOW_API_KEY dans les variables d'environnement.",
+    );
+  }
+
+  const productId = getChariowProductId(planSlug, billingCycle);
+  if (!productId) {
+    throw new Error(
+      `Produit Chariow non configuré pour le plan "${planName}" (${billingCycle}). ` +
+        `Ajoutez CHARIOW_PRODUCT_${planSlug.toUpperCase()}_${billingCycle} dans les variables d'environnement.`,
+    );
+  }
+
+  const nameParts = customerName.trim().split(/\s+/);
+  const firstName = nameParts[0] || "Client";
+  const lastName = nameParts.slice(1).join(" ") || "OControle";
+  const phoneDigits = (customerPhone ?? "").replace(/\D/g, "");
+  const normalizedPhone =
+    phoneDigits.length >= 8 ? phoneDigits : "0101010101";
+
+  const publicAppUrl = getPublicAppUrl();
+
+  const payload: Record<string, unknown> = {
+    product_id: productId,
+    email: customerEmail,
+    first_name: firstName,
+    last_name: lastName,
+    phone: {
+      number: normalizedPhone,
+      country_code: "CI",
+    },
+    redirect_url: `${publicAppUrl}/dashboard/billing/success?sale_id={sale_id}`,
+    custom_metadata: {
+      company_id: companyId,
+      plan_id: planId,
+      plan_slug: planSlug,
+      billing_cycle: billingCycle,
+    },
+  };
+
+  console.log("Chariow checkout request:", JSON.stringify(payload, null, 2));
+
+  const response = await fetch(`${CHARIOW_API_URL}/checkout`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${CHARIOW_SECRET_KEY}`,
+      Authorization: `Bearer ${CHARIOW_API_KEY}`,
     },
-    body: JSON.stringify({
-      amount,
-      currency,
-      description: `OControle — ${planName} (${billingCycle === "YEARLY" ? "Annuel" : "Mensuel"})`,
-      customer_email: customerEmail,
-      customer_name: customerName,
-      metadata: {
-        company_id: companyId,
-        plan_name: planName,
-        billing_cycle: billingCycle,
-      },
-      success_url: `${APP_URL}/dashboard/billing/success?session_id={sale_id}`,
-      cancel_url: `${APP_URL}/dashboard/billing/cancel`,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Chariow API error: ${response.status} — ${errorBody}`);
+    console.error("Chariow checkout error:", response.status, errorBody);
+
+    let userMessage = "Erreur lors du paiement.";
+    try {
+      const parsed = JSON.parse(errorBody);
+      if (parsed.message) userMessage = parsed.message;
+      if (parsed.errors) {
+        const fieldErrors = Object.values(parsed.errors).flat();
+        if (fieldErrors.length > 0) {
+          userMessage = fieldErrors.join(". ");
+        }
+      }
+    } catch {
+      // keep default message
+    }
+    throw new Error(userMessage);
   }
 
-  const data = await response.json();
-  return {
-    saleId: data.id as string,
-    checkoutUrl: data.checkout_url as string,
-  };
+  const result = await response.json();
+  const data = result.data;
+
+  if (data.step === "payment" && data.payment?.checkout_url) {
+    return {
+      saleId: data.purchase?.id as string,
+      checkoutUrl: data.payment.checkout_url as string,
+    };
+  }
+
+  if (data.step === "completed") {
+    return {
+      saleId: data.purchase?.id as string,
+      checkoutUrl: `${publicAppUrl}/dashboard/billing/success?session_id=${data.purchase?.id}`,
+    };
+  }
+
+  if (data.step === "already_purchased") {
+    throw new Error("Ce plan a déjà été acheté.");
+  }
+
+  throw new Error("Réponse inattendue de Chariow");
 }
 
 export function verifyWebhookSignature(
@@ -81,12 +236,66 @@ export interface ChariowWebhookEvent {
     status: string;
     metadata?: {
       company_id?: string;
-      plan_name?: string;
+      plan_slug?: string;
+      billing_cycle?: string;
+    };
+    custom_metadata?: {
+      company_id?: string;
+      plan_slug?: string;
       billing_cycle?: string;
     };
   };
 }
 
 export function parseWebhookEvent(body: string): ChariowWebhookEvent {
-  return JSON.parse(body) as ChariowWebhookEvent;
+  const raw = JSON.parse(body);
+  const event = raw as ChariowWebhookEvent;
+  if (event.data?.custom_metadata && !event.data.metadata) {
+    event.data.metadata = event.data.custom_metadata;
+  }
+  return event;
+}
+
+export async function getSale(saleId: string): Promise<ChariowSale> {
+  if (!CHARIOW_API_KEY) {
+    throw new Error("Clé API Chariow non configurée.");
+  }
+  const response = await fetch(`${CHARIOW_API_URL}/sales/${saleId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${CHARIOW_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Impossible de récupérer la vente Chariow (${response.status}) ${body}`);
+  }
+
+  const parsed = await response.json();
+  return parsed.data as ChariowSale;
+}
+
+export async function listSales(limit = 50): Promise<ChariowSale[]> {
+  if (!CHARIOW_API_KEY) {
+    throw new Error("Clé API Chariow non configurée.");
+  }
+  const response = await fetch(`${CHARIOW_API_URL}/sales?per_page=${limit}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${CHARIOW_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Impossible de lister les ventes Chariow (${response.status}) ${body}`);
+  }
+
+  const parsed = await response.json();
+  return (parsed.data ?? []) as ChariowSale[];
 }

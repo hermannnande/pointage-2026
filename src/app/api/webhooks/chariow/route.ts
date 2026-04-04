@@ -1,41 +1,84 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { BillingCycle } from "@prisma/client";
 
 import * as billingService from "@/services/billing.service";
 import * as chariowService from "@/services/chariow.service";
 
+interface ChariowPulsePayload {
+  event: string;
+  sale?: {
+    id: string;
+    amount: {
+      value: number;
+      currency: string;
+    };
+    status: string;
+    custom_metadata?: Record<string, string>;
+  };
+  product?: {
+    id: string;
+    name: string;
+  };
+  customer?: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text();
-    const signature = req.headers.get("x-chariow-signature") ?? "";
+    const signature =
+      req.headers.get("x-chariow-signature") ??
+      req.headers.get("x-webhook-signature") ??
+      "";
 
     const isValid = chariowService.verifyWebhookSignature(body, signature);
     if (!isValid && process.env.NODE_ENV === "production") {
+      console.error("Chariow webhook: signature invalide");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const event = chariowService.parseWebhookEvent(body);
-    const companyId = event.data.metadata?.company_id;
+    const payload: ChariowPulsePayload = JSON.parse(body);
+    const eventType = payload.event;
+    const sale = payload.sale;
+
+    const companyId = sale?.custom_metadata?.company_id;
 
     if (!companyId) {
+      console.error("Webhook: company_id manquant dans custom_metadata", payload);
       return NextResponse.json({ error: "Missing company_id" }, { status: 400 });
     }
 
-    switch (event.type) {
-      case "sale.completed":
-      case "payment.success":
+    console.log(`Chariow pulse: ${eventType} | sale=${sale?.id} | company=${companyId}`);
+
+    switch (eventType) {
+      case "successful.sale":
         await billingService.handlePaymentSuccess(
           companyId,
-          event.data.amount,
-          event.data.id,
+          sale?.amount?.value ?? 0,
+          sale?.id ?? "",
+          {
+            planId: sale?.custom_metadata?.plan_id,
+            planSlug: sale?.custom_metadata?.plan_slug,
+            billingCycle: sale?.custom_metadata?.billing_cycle
+              ? (sale.custom_metadata.billing_cycle as BillingCycle)
+              : undefined,
+          },
         );
         break;
 
-      case "sale.failed":
-      case "payment.failed":
-        await billingService.handlePaymentFailed(companyId, event.data.id);
+      case "failed.sale":
+        await billingService.handlePaymentFailed(companyId, sale?.id);
+        break;
+
+      case "abandoned.sale":
+        console.log(`Sale abandonnée: ${sale?.id}`);
         break;
 
       default:
+        console.log(`Événement Chariow non géré: ${eventType}`);
         break;
     }
 

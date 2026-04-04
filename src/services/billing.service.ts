@@ -17,6 +17,63 @@ export async function getPlans() {
   });
 }
 
+export async function getPlanById(planId: string) {
+  return prisma.plan.findUnique({ where: { id: planId } });
+}
+
+export async function getPlanBySlug(slug: string) {
+  return prisma.plan.findUnique({ where: { slug } });
+}
+
+export async function recordPaymentInitiated(params: {
+  companyId: string;
+  chariowSaleId: string;
+  planId: string;
+  planName: string;
+  planSlug: string;
+  billingCycle: BillingCycle;
+}) {
+  const { companyId, chariowSaleId, planId, planName, planSlug, billingCycle } =
+    params;
+
+  return prisma.billingEvent.create({
+    data: {
+      companyId,
+      type: "payment_initiated",
+      chariowSaleId,
+      chariowEventType: "checkout.initiated",
+      metadata: {
+        planId,
+        planName,
+        planSlug,
+        billingCycle,
+      },
+    },
+  });
+}
+
+export async function validatePlanChange(
+  companyId: string,
+  planId: string,
+) {
+  const plan = await prisma.plan.findUnique({ where: { id: planId } });
+  if (!plan) throw new Error("Plan introuvable");
+
+  const sub = await prisma.subscription.findUnique({ where: { companyId } });
+  if (!sub) throw new Error("Aucun abonnement trouvé");
+
+  const activeEmpCount = await prisma.employee.count({
+    where: { companyId, isActive: true },
+  });
+  if (activeEmpCount > plan.maxEmployees) {
+    throw new Error(
+      `Ce plan est limité à ${plan.maxEmployees} employés. Vous en avez ${activeEmpCount} actifs.`,
+    );
+  }
+
+  return plan;
+}
+
 export async function changePlan(
   companyId: string,
   planId: string,
@@ -46,18 +103,22 @@ export async function changePlan(
 export async function activateSubscription(
   companyId: string,
   chariowSaleId: string,
+  options?: { planId?: string; billingCycle?: BillingCycle },
 ) {
   const now = new Date();
   const sub = await prisma.subscription.findUnique({ where: { companyId } });
   if (!sub) throw new Error("Aucun abonnement");
 
-  const monthsToAdd = sub.billingCycle === "YEARLY" ? 12 : 1;
+  const effectiveBillingCycle = options?.billingCycle ?? sub.billingCycle;
+  const monthsToAdd = effectiveBillingCycle === "YEARLY" ? 12 : 1;
   const periodEnd = new Date(now);
   periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd);
 
   return prisma.subscription.update({
     where: { companyId },
     data: {
+      ...(options?.planId ? { planId: options.planId } : {}),
+      ...(options?.billingCycle ? { billingCycle: options.billingCycle } : {}),
       status: "ACTIVE",
       currentPeriodStart: now,
       currentPeriodEnd: periodEnd,
@@ -72,8 +133,30 @@ export async function handlePaymentSuccess(
   companyId: string,
   amount: number,
   chariowSaleId: string,
+  options?: { planId?: string; planSlug?: string; billingCycle?: BillingCycle },
 ) {
-  const sub = await activateSubscription(companyId, chariowSaleId);
+  const existingEvent = await prisma.billingEvent.findFirst({
+    where: { companyId, type: "payment_success", chariowSaleId },
+  });
+  if (existingEvent) {
+    const sub = await getSubscription(companyId);
+    return sub;
+  }
+
+  let targetPlanId = options?.planId;
+  if (!targetPlanId && options?.planSlug) {
+    const plan = await prisma.plan.findUnique({ where: { slug: options.planSlug } });
+    targetPlanId = plan?.id;
+  }
+
+  if (targetPlanId) {
+    await validatePlanChange(companyId, targetPlanId);
+  }
+
+  const sub = await activateSubscription(companyId, chariowSaleId, {
+    planId: targetPlanId,
+    billingCycle: options?.billingCycle,
+  });
 
   await prisma.billingEvent.create({
     data: {
@@ -81,7 +164,14 @@ export async function handlePaymentSuccess(
       type: "payment_success",
       amount,
       chariowSaleId,
-      chariowEventType: "sale.completed",
+      chariowEventType: "successful.sale",
+      metadata: options
+        ? {
+            planId: options.planId ?? null,
+            planSlug: options.planSlug ?? null,
+            billingCycle: options.billingCycle ?? null,
+          }
+        : undefined,
     },
   });
 
@@ -228,4 +318,52 @@ export async function getBillingEvents(companyId: string) {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
+}
+
+export async function getPendingCheckout(companyId: string): Promise<{
+  saleId: string;
+  createdAt: Date;
+  planName?: string;
+  billingCycle?: BillingCycle;
+} | null> {
+  const now = Date.now();
+  const initiatedEvents = await prisma.billingEvent.findMany({
+    where: { companyId, type: "payment_initiated", chariowSaleId: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
+
+  for (const event of initiatedEvents) {
+    if (!event.chariowSaleId) continue;
+
+    const resolved = await prisma.billingEvent.findFirst({
+      where: {
+        companyId,
+        chariowSaleId: event.chariowSaleId,
+        type: { in: ["payment_success", "payment_failed"] },
+      },
+      select: { id: true },
+    });
+
+    if (resolved) continue;
+
+    // Évite d'afficher un "paiement en attente" indéfiniment.
+    if (now - event.createdAt.getTime() > 30 * 60 * 1000) {
+      continue;
+    }
+
+    const metadata = (event.metadata ?? {}) as {
+      planName?: string;
+      billingCycle?: BillingCycle;
+    };
+
+    return {
+      saleId: event.chariowSaleId,
+      createdAt: event.createdAt,
+      planName: metadata.planName,
+      billingCycle: metadata.billingCycle,
+    };
+  }
+
+  return null;
 }

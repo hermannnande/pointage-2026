@@ -52,6 +52,18 @@ export async function getEmployeeTodayAction() {
   return attendanceService.getEmployeeTodayRecord(session.companyId, session.employeeId);
 }
 
+export async function getEmployeeSiteScheduleAction(): Promise<{ workEndTime: string | null } | null> {
+  const session = await getEmployeeSession();
+  if (!session) return null;
+
+  const employee = await prisma.employee.findFirst({
+    where: { id: session.employeeId, companyId: session.companyId },
+    select: { site: { select: { workEndTime: true } } },
+  });
+
+  return { workEndTime: employee?.site?.workEndTime ?? null };
+}
+
 export async function getEmployeeRecentHistoryAction() {
   const session = await getEmployeeSession();
   if (!session) return [];

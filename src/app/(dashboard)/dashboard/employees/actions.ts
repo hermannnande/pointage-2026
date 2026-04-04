@@ -109,6 +109,18 @@ export async function deleteEmployeeAction(employeeId: string): Promise<ActionRe
   }
 }
 
+export async function permanentDeleteEmployeeAction(employeeId: string): Promise<ActionResult> {
+  try {
+    const ctx = await getContext();
+    requirePermission(ctx, PERMISSIONS.EMPLOYEES_DELETE);
+    await employeeService.permanentDeleteEmployee(ctx.companyId, employeeId);
+    revalidatePath("/dashboard/employees");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Erreur" };
+  }
+}
+
 export async function importEmployeesAction(
   rows: { firstName: string; lastName: string; email?: string; phone?: string; matricule?: string; position?: string; contractType?: string }[],
 ): Promise<ActionResult<{ success: number; errors: { row: number; message: string }[] }>> {

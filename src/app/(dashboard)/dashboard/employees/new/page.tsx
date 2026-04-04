@@ -56,7 +56,6 @@ export default function NewEmployeePage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [matricule, setMatricule] = useState("");
   const [position, setPosition] = useState("");
   const [siteId, setSiteId] = useState(EMPTY_SITE);
   const [contractType, setContractType] = useState<string>("CDI");
@@ -99,7 +98,7 @@ export default function NewEmployeePage() {
         lastName: lastName.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
-        matricule: matricule.trim() || undefined,
+        matricule: undefined,
         position: position.trim() || undefined,
         siteId:
           siteId === EMPTY_SITE || !siteId ? undefined : siteId,
@@ -308,22 +307,6 @@ export default function NewEmployeePage() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="matricule">
-                  Matricule
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">
-                    (auto si vide)
-                  </span>
-                </Label>
-                <Input
-                  id="matricule"
-                  name="matricule"
-                  maxLength={50}
-                  placeholder="Ex: EMP-001 (généré si vide)"
-                  value={matricule}
-                  onChange={(e) => setMatricule(e.target.value)}
-                />
-              </div>
               <div className="grid gap-2">
                 <Label htmlFor="position">Poste</Label>
                 <Input

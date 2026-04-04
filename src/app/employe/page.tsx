@@ -15,7 +15,6 @@ import { employeeLoginAction } from "./actions";
 export default function EmployeeLoginPage() {
   const router = useRouter();
   const [siteCode, setSiteCode] = useState("");
-  const [matricule, setMatricule] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,7 +27,6 @@ export default function EmployeeLoginPage() {
 
     const result = await employeeLoginAction({
       siteCode: siteCode.trim(),
-      matricule: matricule.trim(),
       password: password,
     });
 
@@ -86,23 +84,6 @@ export default function EmployeeLoginPage() {
               />
               <p className="text-xs text-muted-foreground">
                 Le code à 6 caractères donné par votre responsable
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="matricule">Matricule</Label>
-              <Input
-                id="matricule"
-                value={matricule}
-                onChange={(e) => setMatricule(e.target.value)}
-                placeholder="Ex : EMP-001"
-                required
-                disabled={loading}
-                maxLength={50}
-                autoComplete="off"
-              />
-              <p className="text-xs text-muted-foreground">
-                Votre numéro d&apos;employé
               </p>
             </div>
 

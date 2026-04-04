@@ -21,6 +21,7 @@ export interface TenantContext {
   user: {
     email: string;
     fullName: string;
+    phone: string | null;
     avatarUrl: string | null;
   };
 }

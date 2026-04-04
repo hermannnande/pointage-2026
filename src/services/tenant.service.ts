@@ -69,6 +69,7 @@ export async function getTenantContext(
     user: {
       email: user.email,
       fullName: user.fullName,
+      phone: user.phone,
       avatarUrl: user.avatarUrl,
     },
   };

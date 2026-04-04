@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/page-header";
@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 
 import {
   deleteEmployeeAction,
+  permanentDeleteEmployeeAction,
   getEmployeeAction,
   getSitesForSelectAction,
   updateEmployeeAction,
@@ -82,6 +83,7 @@ export default function EditEmployeePage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hydrateFromEmployee = useCallback((emp: EmployeeRecord) => {
@@ -192,6 +194,30 @@ export default function EditEmployeePage() {
       }
     } finally {
       setDeactivating(false);
+    }
+  }
+
+  async function handlePermanentDelete() {
+    if (!id) return;
+    const fullName = `${firstName} ${lastName}`.trim() || "cet employé";
+    if (
+      !window.confirm(
+        `Supprimer définitivement "${fullName}" ?\n\nCette action est irréversible. Toutes les données de pointage liées seront aussi supprimées.`,
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const result = await permanentDeleteEmployeeAction(id);
+      if (result.success) {
+        toast.success("Employé supprimé définitivement");
+        router.push("/dashboard/employees");
+      } else {
+        toast.error(result.error ?? "Échec de la suppression");
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -383,30 +409,52 @@ export default function EditEmployeePage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-wrap gap-2 border-t bg-transparent">
-            <Button type="submit" disabled={submitting || deactivating}>
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Enregistrement…
-                </>
-              ) : (
-                "Enregistrer"
-              )}
-            </Button>
+          <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t bg-transparent">
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={submitting || deactivating || deleting}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Enregistrement…
+                  </>
+                ) : (
+                  "Enregistrer"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="text-amber-600 hover:border-amber-400 hover:bg-amber-50"
+                disabled={submitting || deactivating || deleting || !isActive}
+                onClick={() => void handleDeactivate()}
+              >
+                {deactivating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Désactivation…
+                  </>
+                ) : (
+                  "Désactiver"
+                )}
+              </Button>
+            </div>
             <Button
               type="button"
               variant="destructive"
-              disabled={submitting || deactivating || !isActive}
-              onClick={() => void handleDeactivate()}
+              disabled={submitting || deactivating || deleting}
+              onClick={() => void handlePermanentDelete()}
+              className="gap-2"
             >
-              {deactivating ? (
+              {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Désactivation…
+                  Suppression…
                 </>
               ) : (
-                "Désactiver"
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Supprimer définitivement
+                </>
               )}
             </Button>
           </CardFooter>

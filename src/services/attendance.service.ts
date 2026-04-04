@@ -56,6 +56,11 @@ export async function clockAction(payload: ClockPayload) {
 
   const site = employee.site;
 
+  // La localisation est obligatoire pour tout pointage hors mode kiosque.
+  if (source !== "KIOSK" && (latitude == null || longitude == null)) {
+    throw new Error("La localisation est obligatoire pour effectuer le pointage.");
+  }
+
   let isGeofenceOk: boolean | null = null;
   if (site && latitude != null && longitude != null && site.latitude != null && site.longitude != null) {
     const dist = distanceMeters(latitude, longitude, site.latitude, site.longitude);
@@ -68,7 +73,33 @@ export async function clockAction(payload: ClockPayload) {
   });
 
   if (type === "CLOCK_IN") {
-    if (record?.clockIn) throw new Error("Déjà pointé aujourd'hui");
+    if (record?.clockIn && !record?.clockOut) throw new Error("Déjà pointé aujourd'hui");
+
+    if (record?.clockIn && record?.clockOut) {
+      const gapMinutes = Math.max(0, diffMinutes(record.clockOut, now));
+      await prisma.break.create({
+        data: { recordId: record.id, startTime: record.clockOut, endTime: now, durationMinutes: gapMinutes },
+      });
+
+      const allBreaks = await prisma.break.findMany({ where: { recordId: record.id } });
+      const totalBreakMin = allBreaks.reduce((sum, b) => sum + (b.durationMinutes ?? 0), 0);
+
+      record = await prisma.attendanceRecord.update({
+        where: { id: record.id },
+        data: {
+          clockOut: null,
+          clockOutLat: null,
+          clockOutLng: null,
+          workedMinutes: 0,
+          breakMinutes: totalBreakMin,
+          overtimeMinutes: 0,
+          isEarlyDeparture: false,
+          earlyMinutes: 0,
+          status: record.isLate ? "LATE" : "PRESENT",
+        },
+        include: { breaks: true },
+      });
+    } else {
 
     let isLate = false;
     let lateMinutes = 0;
@@ -124,6 +155,7 @@ export async function clockAction(payload: ClockPayload) {
       },
       include: { breaks: true },
     });
+    }
   } else if (type === "CLOCK_OUT") {
     if (!record?.clockIn) throw new Error("Pointage d'entrée manquant");
     if (record.clockOut) throw new Error("Déjà pointé sortie aujourd'hui");

@@ -40,20 +40,74 @@ function fmtTime(d: Date | string | null | undefined): string {
   });
 }
 
-function getGeoPosition(): Promise<{ latitude: number; longitude: number } | null> {
+let cachedPosition: { latitude: number; longitude: number } | null = null;
+let geoWatchId: number | null = null;
+
+function startGeoWatch() {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return;
+  if (geoWatchId !== null) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      cachedPosition = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      };
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+  );
+
+  geoWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      cachedPosition = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      };
+    },
+    () => {},
+    { enableHighAccuracy: false, maximumAge: 60_000 },
+  );
+}
+
+function stopGeoWatch() {
+  if (geoWatchId !== null && typeof navigator !== "undefined" && navigator.geolocation) {
+    navigator.geolocation.clearWatch(geoWatchId);
+    geoWatchId = null;
+  }
+}
+
+function getCachedGeo() {
+  return cachedPosition;
+}
+
+function requestSingleGeoPosition(): Promise<{ data: { latitude: number; longitude: number } | null; errorMsg: string | null }> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      resolve(null);
+      resolve({ data: null, errorMsg: "Localisation non supportée par votre navigateur." });
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) =>
         resolve({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
+          data: {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          },
+          errorMsg: null,
         }),
-      () => resolve(null),
-      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 60_000 },
+      (err) => {
+        let msg = "Erreur inconnue.";
+        if (err.code === 1) {
+          msg = "Permission refusée. Vous devez autoriser la localisation dans les paramètres de votre navigateur (Chrome/Safari) pour ce site.";
+        } else if (err.code === 2) {
+          msg = "Position introuvable. Assurez-vous que le GPS est activé sur votre téléphone.";
+        } else if (err.code === 3) {
+          msg = "Délai d'attente dépassé. Réessayez dans un endroit dégagé.";
+        }
+        resolve({ data: null, errorMsg: msg });
+      },
+      { enableHighAccuracy: false, timeout: 15_000, maximumAge: 0 },
     );
   });
 }
@@ -97,6 +151,11 @@ export default function EmployeeClockPage() {
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    startGeoWatch();
+    return () => stopGeoWatch();
   }, []);
 
   useEffect(() => {
@@ -194,7 +253,24 @@ export default function EmployeeClockPage() {
     if (!employeeId) return;
     setLoadingAction(type);
     try {
-      const geo = await getGeoPosition();
+      let geo = getCachedGeo();
+      if (!geo) {
+        const res = await requestSingleGeoPosition();
+        if (res.data) {
+          geo = res.data;
+          cachedPosition = geo;
+          startGeoWatch();
+        } else {
+          toast.error(res.errorMsg || "Localisation obligatoire.");
+          return;
+        }
+      }
+      if (!geo) {
+        toast.error(
+          "Localisation obligatoire: activez la géolocalisation puis réessayez.",
+        );
+        return;
+      }
       const res = await clockInOutAction({
         employeeId,
         type,

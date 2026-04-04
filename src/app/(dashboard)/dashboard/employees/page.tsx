@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Eye, Search, Upload, UserPlus } from "lucide-react";
+import { Eye, Search, Trash2, Upload, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/page-header";
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { getEmployeesAction, getSitesForSelectAction } from "./actions";
+import { getEmployeesAction, getSitesForSelectAction, permanentDeleteEmployeeAction } from "./actions";
 
 const ALL_SITES_VALUE = "__all__";
 
@@ -45,6 +45,7 @@ export default function EmployeesPage() {
   const [sitesLoading, setSitesLoading] = useState(true);
   const [sites, setSites] = useState<SiteOption[]>([]);
   const [payload, setPayload] = useState<EmployeesPayload | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search), 300);
@@ -97,6 +98,30 @@ export default function EmployeesPage() {
   useEffect(() => {
     void loadEmployees();
   }, [loadEmployees]);
+
+  async function handleDelete(employee: EmployeeRow) {
+    const fullName = `${employee.firstName} ${employee.lastName}`.trim();
+    if (
+      !window.confirm(
+        `Supprimer définitivement "${fullName}" ?\n\nCette action est irréversible. Toutes les données de pointage liées seront aussi supprimées.`,
+      )
+    )
+      return;
+    setDeletingId(employee.id);
+    try {
+      const res = await permanentDeleteEmployeeAction(employee.id);
+      if (res.success) {
+        toast.success(`${fullName} a été supprimé`);
+        void loadEmployees();
+      } else {
+        toast.error(res.error ?? "Impossible de supprimer l'employé");
+      }
+    } catch {
+      toast.error("Une erreur est survenue");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const columns = useMemo<ColumnDef<EmployeeRow>[]>(
     () => [
@@ -158,17 +183,34 @@ export default function EmployeesPage() {
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/dashboard/employees/${row.original.id}`}>
-              <Eye className="h-4 w-4" />
-              <span className="sr-only">Voir</span>
-            </Link>
-          </Button>
-        ),
+        cell: ({ row }) => {
+          const emp = row.original;
+          const isDeleting = deletingId === emp.id;
+          return (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/employees/${emp.id}`}>
+                  <Eye className="h-4 w-4" />
+                  <span className="sr-only">Voir</span>
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isDeleting}
+                onClick={() => void handleDelete(emp)}
+                className="text-destructive hover:border-destructive hover:bg-destructive/10"
+                title="Supprimer définitivement"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Supprimer</span>
+              </Button>
+            </div>
+          );
+        },
       },
     ],
-    [],
+    [deletingId],
   );
 
   if (loading && !payload) {

@@ -126,6 +126,17 @@ export async function deleteEmployee(companyId: string, employeeId: string) {
   });
 }
 
+export async function permanentDeleteEmployee(companyId: string, employeeId: string) {
+  const emp = await prisma.employee.findFirst({
+    where: { id: employeeId, companyId },
+  });
+  if (!emp) throw new Error("Employé introuvable");
+
+  return prisma.employee.delete({
+    where: { id: employeeId },
+  });
+}
+
 export async function getActiveEmployeeCount(companyId: string): Promise<number> {
   return prisma.employee.count({ where: { companyId, isActive: true } });
 }
