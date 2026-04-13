@@ -50,7 +50,8 @@ function fmtTime(d: Date | string | null | undefined): string {
 }
 
 let geoWatchId: number | null = null;
-let watchBest: GeolocationPosition | null = null;
+let latestPosition: GeolocationPosition | null = null;
+let onPositionUpdate: ((pos: GeolocationPosition) => void) | null = null;
 
 function startGeoWatch() {
   if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -58,12 +59,11 @@ function startGeoWatch() {
 
   geoWatchId = navigator.geolocation.watchPosition(
     (pos) => {
-      if (!watchBest || pos.coords.accuracy < watchBest.coords.accuracy) {
-        watchBest = pos;
-      }
+      latestPosition = pos;
+      onPositionUpdate?.(pos);
     },
     () => {},
-    { enableHighAccuracy: true, maximumAge: 5_000 },
+    { enableHighAccuracy: true, maximumAge: 3_000 },
   );
 }
 
@@ -72,6 +72,7 @@ function stopGeoWatch() {
     navigator.geolocation.clearWatch(geoWatchId);
     geoWatchId = null;
   }
+  onPositionUpdate = null;
 }
 
 function freshGeoSample(timeoutMs: number, allowCache = false): Promise<GeolocationPosition | null> {
@@ -91,19 +92,15 @@ function freshGeoSample(timeoutMs: number, allowCache = false): Promise<Geolocat
 async function getBestGeoPosition(): Promise<GeolocationPosition | null> {
   const samples: GeolocationPosition[] = [];
 
-  const cached = await freshGeoSample(8_000, true);
-  if (cached) samples.push(cached);
+  if (latestPosition) samples.push(latestPosition);
 
-  for (let i = 0; i < 3; i += 1) {
-    const sample = await freshGeoSample(i === 0 ? 15_000 : 10_000);
-    if (sample) {
-      samples.push(sample);
-      if (sample.coords.accuracy <= 50) break;
-    }
-    if (i < 2) await new Promise((r) => setTimeout(r, 800));
+  const fresh = await freshGeoSample(10_000);
+  if (fresh) samples.push(fresh);
+
+  if (samples.length > 0 && samples[0].coords.accuracy > 80) {
+    const extra = await freshGeoSample(8_000);
+    if (extra) samples.push(extra);
   }
-
-  if (watchBest) samples.push(watchBest);
 
   if (samples.length === 0) return null;
 
@@ -187,6 +184,11 @@ export default function EmployeeSpacePage() {
     return () => window.clearInterval(id);
   }, []);
 
+  const updateGpsBanner = useCallback((pos: GeolocationPosition) => {
+    setGpsAccuracy(Math.round(pos.coords.accuracy));
+    setGpsStatus("active");
+  }, []);
+
   const activateGps = useCallback(async (silent = false) => {
     setGpsStatus("loading");
     setGpsAddress(null);
@@ -229,10 +231,13 @@ export default function EmployeeSpacePage() {
   }, []);
 
   useEffect(() => {
+    onPositionUpdate = updateGpsBanner;
     startGeoWatch();
     void activateGps(true);
-    return () => stopGeoWatch();
-  }, [activateGps]);
+    return () => {
+      stopGeoWatch();
+    };
+  }, [activateGps, updateGpsBanner]);
 
   useEffect(() => {
     let cancelled = false;
@@ -358,20 +363,31 @@ export default function EmployeeSpacePage() {
   async function runClock(type: EventType) {
     setLoadingAction(type);
     try {
-      const geo = await requestGoogleVerifiedPosition();
+      const pos = await getBestGeoPosition();
 
-      if (!geo) {
+      if (!pos) {
+        setGpsStatus("error");
         toast.error(
-          "Localisation impossible. Cliquez d'abord sur « Activer » dans le bandeau GPS ci-dessus, puis réessayez.",
-          { duration: 6000 },
+          "Localisation impossible. Vérifiez que le GPS est activé puis réessayez.",
+          { duration: 5000 },
         );
         return;
       }
 
+      setGpsAccuracy(Math.round(pos.coords.accuracy));
+      setGpsStatus("active");
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      googleResolveAddress(lat, lng).then((addr) => {
+        if (addr) setGpsAddress(addr.split(",").slice(0, 2).join(",").trim());
+      });
+
       const res = await employeeClockAction({
         type,
-        latitude: geo.latitude,
-        longitude: geo.longitude,
+        latitude: lat,
+        longitude: lng,
       });
       if (!res.success) {
         toast.error(res.error ?? "Action impossible");
@@ -379,9 +395,9 @@ export default function EmployeeSpacePage() {
       }
       toast.success(
         type === "CLOCK_IN"
-          ? "Entrée enregistrée (Google Maps) !"
+          ? "Entrée enregistrée !"
           : type === "CLOCK_OUT"
-            ? "Sortie enregistrée (Google Maps) !"
+            ? "Sortie enregistrée !"
             : type === "BREAK_START"
               ? "Pause commencée"
               : "Pause terminée",
