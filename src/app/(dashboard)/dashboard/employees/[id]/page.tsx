@@ -367,6 +367,25 @@ export default function EditEmployeePage() {
                 />
               </div>
             </div>
+            {/* Code du site */}
+            {siteId && siteId !== EMPTY_SITE && (() => {
+              const selectedSite = sites.find((s) => s.id === siteId);
+              return selectedSite?.code ? (
+                <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Code du site</p>
+                    <p className="font-mono text-xl font-bold tracking-widest text-primary">
+                      {selectedSite.code}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Site</p>
+                    <p className="text-sm font-medium">{selectedSite.name}</p>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label>Site</Label>
@@ -382,7 +401,7 @@ export default function EditEmployeePage() {
                     <SelectItem value={EMPTY_SITE}>Non assigné</SelectItem>
                     {sites.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.name}
+                        {s.name} {s.code ? `(${s.code})` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

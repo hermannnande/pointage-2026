@@ -1,0 +1,17 @@
+---
+description: Toujours déployer après les modifications
+alwaysApply: true
+---
+
+# Déploiement automatique
+
+Après avoir terminé les modifications de code :
+
+1. `git add -A`
+2. `git commit -m "description du changement"`
+3. `git push origin main`
+4. Si le schéma Prisma a été modifié, exécuter `prisma db push` avec la connexion directe (port 5432, pas 6543)
+
+Le projet est déployé sur **Vercel** et se redéploie automatiquement après un push sur `main`.
+- Remote : `https://github.com/hermannnande/pointage-2026.git`
+- Base de données : Supabase (PostgreSQL)
