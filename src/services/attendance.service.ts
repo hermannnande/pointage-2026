@@ -57,11 +57,25 @@ export async function clockAction(payload: ClockPayload) {
 
   const site = employee.site;
 
+  if (source !== "KIOSK" && (latitude == null || longitude == null)) {
+    throw new Error(
+      "Localisation requise. Activez le GPS sur votre téléphone puis réessayez."
+    );
+  }
+
   let isGeofenceOk: boolean | null = null;
   let distToSite: number | null = null;
   if (site && latitude != null && longitude != null && site.latitude != null && site.longitude != null) {
     distToSite = distanceMeters(latitude, longitude, site.latitude, site.longitude);
     isGeofenceOk = distToSite <= site.geofenceRadius;
+
+    if (!isGeofenceOk && source !== "KIOSK") {
+      const distRounded = Math.round(distToSite);
+      const excess = distRounded - site.geofenceRadius;
+      throw new Error(
+        `Vous êtes à ${distRounded}m du site (zone autorisée : ${site.geofenceRadius}m). Rapprochez-vous d'environ ${excess}m vers votre lieu de travail et réessayez.`
+      );
+    }
   }
 
   let record = await prisma.attendanceRecord.findUnique({

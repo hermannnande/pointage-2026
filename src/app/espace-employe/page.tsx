@@ -275,20 +275,26 @@ export default function EmployeeSpacePage() {
     try {
       let geo = getCachedGeo();
       if (!geo) {
-        const res = await requestGeoPosition();
-        if (res.data) {
-          geo = res.data;
+        const freshRes = await requestGeoPosition();
+        if (freshRes.data) {
+          geo = freshRes.data;
           cachedPosition = geo;
           startGeoWatch();
           setGeoReady(true);
+        } else {
+          toast.error(
+            freshRes.errorMsg || "Localisation requise. Activez le GPS de votre téléphone et réessayez.",
+            { duration: 6000 },
+          );
+          return;
         }
       }
 
       const res = await employeeClockAction({
         type,
-        latitude: geo?.latitude,
-        longitude: geo?.longitude,
-        accuracy: geo?.accuracy,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        accuracy: geo.accuracy,
       });
       if (!res.success) {
         toast.error(res.error ?? "Action impossible");
