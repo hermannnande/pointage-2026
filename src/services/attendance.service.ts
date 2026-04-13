@@ -44,9 +44,9 @@ export interface ClockPayload {
   notes?: string;
 }
 
-const MAX_ACCURACY_ALLOWED = 150;
-const MIN_COOLDOWN_SECONDS = 10;
-const MAX_SPEED_MPS = 50; // ~180 km/h
+const MAX_ACCURACY_ALLOWED = 500;
+const MIN_COOLDOWN_SECONDS = 5;
+const MAX_SPEED_MPS = 100; // ~360 km/h — filtre uniquement les GPS fictifs évidents
 
 export async function clockAction(payload: ClockPayload) {
   const { employeeId, companyId, type, latitude, longitude, accuracy, source = "WEB", notes } = payload;
@@ -95,7 +95,7 @@ export async function clockAction(payload: ClockPayload) {
           latitude, longitude,
         );
         const speed = distSinceLast / secondsSinceLast;
-        if (speed > MAX_SPEED_MPS && distSinceLast > 500) {
+        if (speed > MAX_SPEED_MPS && distSinceLast > 5000) {
           throw new Error(
             "Position suspecte détectée. Votre localisation a changé trop rapidement. Désactivez toute application de position fictive et réessayez."
           );

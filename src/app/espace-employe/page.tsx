@@ -55,8 +55,6 @@ function fmtTime(d: Date | string | null | undefined): string {
   });
 }
 
-const MAX_ACCURACY_METERS = 100;
-
 type GeoData = { latitude: number; longitude: number; accuracy: number; timestamp: number };
 let cachedPosition: GeoData | null = null;
 let geoWatchId: number | null = null;
@@ -65,30 +63,20 @@ function startGeoWatch() {
   if (typeof navigator === "undefined" || !navigator.geolocation) return;
   if (geoWatchId !== null) return;
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      cachedPosition = {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-        timestamp: pos.timestamp,
-      };
-    },
-    () => {},
-    { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 },
-  );
-
   geoWatchId = navigator.geolocation.watchPosition(
     (pos) => {
-      cachedPosition = {
+      const newPos: GeoData = {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
         accuracy: pos.coords.accuracy,
         timestamp: pos.timestamp,
       };
+      if (!cachedPosition || newPos.accuracy <= cachedPosition.accuracy) {
+        cachedPosition = newPos;
+      }
     },
     () => {},
-    { enableHighAccuracy: true, maximumAge: 5_000 },
+    { enableHighAccuracy: true, maximumAge: 10_000 },
   );
 }
 
@@ -102,11 +90,11 @@ function stopGeoWatch() {
 function getCachedGeo(): GeoData | null {
   if (!cachedPosition) return null;
   const age = Date.now() - cachedPosition.timestamp;
-  if (age > 15_000) return null;
+  if (age > 60_000) return null;
   return cachedPosition;
 }
 
-function requestFreshGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string | null }> {
+function requestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string | null }> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       resolve({ data: null, errorMsg: "Localisation non supportée par votre navigateur." });
@@ -120,13 +108,6 @@ function requestFreshGeoPosition(): Promise<{ data: GeoData | null; errorMsg: st
           accuracy: pos.coords.accuracy,
           timestamp: pos.timestamp,
         };
-        if (data.accuracy > MAX_ACCURACY_METERS) {
-          resolve({
-            data: null,
-            errorMsg: `Précision GPS insuffisante (${Math.round(data.accuracy)}m). Allez dans un endroit dégagé et activez le GPS de votre téléphone.`,
-          });
-          return;
-        }
         resolve({ data, errorMsg: null });
       },
       (err) => {
@@ -140,7 +121,7 @@ function requestFreshGeoPosition(): Promise<{ data: GeoData | null; errorMsg: st
         }
         resolve({ data: null, errorMsg: msg });
       },
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 10_000 },
     );
   });
 }
@@ -303,7 +284,7 @@ export default function EmployeeSpacePage() {
   async function handleEnableGeo() {
     setGeoRequesting(true);
     try {
-      const { data, errorMsg } = await requestFreshGeoPosition();
+      const { data, errorMsg } = await requestGeoPosition();
       if (!data) {
         setGeoReady(false);
         toast.error(errorMsg || "Impossible d'activer la localisation.");
@@ -322,23 +303,21 @@ export default function EmployeeSpacePage() {
   async function runClock(type: EventType) {
     setLoadingAction(type);
     try {
-      const freshResult = await requestFreshGeoPosition();
-      if (!freshResult.data) {
+      let geo = getCachedGeo();
+      if (!geo) {
+        const res = await requestGeoPosition();
+        if (res.data) {
+          geo = res.data;
+          cachedPosition = geo;
+          startGeoWatch();
+          setGeoReady(true);
+        }
+      }
+      if (!geo) {
         setGeoReady(false);
         setShowLocationHelp(true);
         toast.error(
-          freshResult.errorMsg || "Localisation obligatoire. Activez votre GPS et réessayez.",
-        );
-        return;
-      }
-      const geo = freshResult.data;
-      cachedPosition = geo;
-      startGeoWatch();
-      setGeoReady(true);
-
-      if (geo.accuracy > MAX_ACCURACY_METERS) {
-        toast.error(
-          `Précision GPS insuffisante (${Math.round(geo.accuracy)}m). Allez dans un endroit dégagé.`,
+          "Localisation obligatoire. Appuyez sur \"Activer ma localisation\" puis réessayez.",
         );
         return;
       }
