@@ -83,6 +83,17 @@ function isValidCoord(lat: number, lng: number): boolean {
   );
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function geolocationErrorMessage(err: GeolocationPositionError): string {
+  if (err.code === 1) return "Accès à la position refusé. Autorisez la localisation dans les paramètres.";
+  if (err.code === 2) return "Position introuvable. Activez le GPS précis puis réessayez.";
+  if (err.code === 3) return "Délai dépassé. Réessayez dans un endroit dégagé.";
+  return "Impossible de vous localiser. Utilisez la barre de recherche.";
+}
+
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
     const resp = await fetch(
@@ -121,6 +132,8 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
   const [geoStatus, setGeoStatus] = useState<GeoStatus>(coords ? "success" : "idle");
   const [input, setInput] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [liveSearchLoading, setLiveSearchLoading] = useState(false);
+  const [autoAccuracy, setAutoAccuracy] = useState<number | null>(null);
   const [searchResults, setSearchResults] = useState<Array<{ lat: number; lng: number; display: string }>>([]);
   const [geoLoading, setGeoLoading] = useState(false);
 
@@ -128,10 +141,37 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
     if (coords) setGeoStatus("success");
   }, [coords]);
 
+  useEffect(() => {
+    const value = input.trim();
+
+    if (!value || looksLikeUrl(value) || looksLikeCoords(value) || value.length < 3) {
+      setLiveSearchLoading(false);
+      setSearchResults([]);
+      return;
+    }
+
+    setLiveSearchLoading(true);
+    const timeoutId = window.setTimeout(() => {
+      void searchAddress(value)
+        .then((results) => {
+          setSearchResults(results);
+        })
+        .finally(() => {
+          setLiveSearchLoading(false);
+        });
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      setLiveSearchLoading(false);
+    };
+  }, [input]);
+
   const applyCoords = useCallback(
-    async (lat: number, lng: number) => {
+    async (lat: number, lng: number, accuracy?: number | null) => {
       onCoordsChange({ lat, lng });
       setGeoStatus("success");
+      setAutoAccuracy(accuracy ?? null);
       setSearchResults([]);
       setInput("");
       if (onAddressResolved) {
@@ -142,28 +182,64 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
     [onCoordsChange, onAddressResolved],
   );
 
-  function requestGeolocation() {
+  async function getGeoSample(timeoutMs: number): Promise<GeolocationPosition> {
+    return await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => resolve(position),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 },
+      );
+    });
+  }
+
+  async function requestGeolocation() {
     if (!navigator.geolocation) {
       toast.error("Géolocalisation non supportée par votre navigateur.");
       return;
     }
     setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        void applyCoords(position.coords.latitude, position.coords.longitude);
-        setGeoLoading(false);
-        toast.success("Position GPS détectée !");
-      },
-      (err) => {
-        setGeoLoading(false);
-        if (err.code === 1) {
-          toast.error("Accès à la position refusé. Autorisez la localisation dans les paramètres.");
-        } else {
-          toast.error("Impossible de vous localiser. Utilisez la barre de recherche.");
+    try {
+      const samples: GeolocationPosition[] = [];
+      let lastErr: GeolocationPositionError | null = null;
+
+      for (let i = 0; i < 3; i += 1) {
+        try {
+          const sample = await getGeoSample(i === 0 ? 15_000 : 10_000);
+          samples.push(sample);
+        } catch (err) {
+          lastErr = err as GeolocationPositionError;
         }
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
+        if (i < 2) await sleep(900);
+      }
+
+      if (samples.length === 0) {
+        if (lastErr) toast.error(geolocationErrorMessage(lastErr));
+        else toast.error("Impossible de vous localiser. Utilisez la barre de recherche.");
+        return;
+      }
+
+      const best = samples.reduce((prev, curr) =>
+        curr.coords.accuracy < prev.coords.accuracy ? curr : prev,
+      );
+
+      if (!isValidCoord(best.coords.latitude, best.coords.longitude)) {
+        toast.error("Coordonnées GPS invalides détectées. Réessayez.");
+        return;
+      }
+
+      const roundedAccuracy = Math.round(best.coords.accuracy);
+      if (best.coords.accuracy > 120) {
+        toast.error(
+          `Signal GPS trop imprécis (±${roundedAccuracy}m). Activez la localisation précise puis réessayez.`,
+        );
+        return;
+      }
+
+      await applyCoords(best.coords.latitude, best.coords.longitude, best.coords.accuracy);
+      toast.success(`Position GPS détectée (précision ±${roundedAccuracy}m)`);
+    } finally {
+      setGeoLoading(false);
+    }
   }
 
   async function handleSubmit() {
@@ -245,6 +321,11 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
               <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
                 {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
               </p>
+              {autoAccuracy != null && (
+                <p className="mt-1 text-[11px] text-green-700/90 dark:text-green-300/90">
+                  Précision GPS mesurée: ±{Math.round(autoAccuracy)}m
+                </p>
+              )}
               <p className="mt-1 text-[11px] text-green-700/90 dark:text-green-300/90">
                 Le pointage utilise ces coordonnees GPS exactes (pas uniquement le texte d&apos;adresse).
               </p>
@@ -278,7 +359,7 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
             variant="default"
             className="w-full gap-2"
             disabled={geoLoading}
-            onClick={requestGeolocation}
+            onClick={() => void requestGeolocation()}
           >
             {geoLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -311,16 +392,22 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
               variant="default"
               size="sm"
               className="shrink-0"
-              disabled={processing || !input.trim()}
+              disabled={processing || liveSearchLoading || !input.trim()}
               onClick={() => void handleSubmit()}
             >
-              {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : "OK"}
+              {processing || liveSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "OK"}
             </Button>
           </div>
 
           <p className="text-[11px] text-muted-foreground">
             Accepte : adresse (ex: Cocody, Abidjan) · lien Google Maps / WhatsApp · coordonnées (ex: 5.336, -3.963)
           </p>
+
+          {!looksLikeUrl(input.trim()) && !looksLikeCoords(input.trim()) && input.trim().length >= 3 && (
+            <p className="text-[11px] text-muted-foreground">
+              Résultats en temps réel pendant la saisie...
+            </p>
+          )}
 
           {/* Résultats de recherche */}
           {searchResults.length > 0 && (
