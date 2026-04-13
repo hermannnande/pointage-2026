@@ -441,7 +441,7 @@ export default function EditEmployeePage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Type de salaire</Label>
-                  <Select value={salaryType} onValueChange={setSalaryType}>
+                  <Select value={salaryType} onValueChange={(v) => setSalaryType(v ?? "MONTHLY")}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -454,7 +454,7 @@ export default function EditEmployeePage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Politique d&apos;absence</Label>
-                  <Select value={absencePolicy} onValueChange={setAbsencePolicy}>
+                  <Select value={absencePolicy} onValueChange={(v) => setAbsencePolicy(v ?? "DEDUCT")}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
