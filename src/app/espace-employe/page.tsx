@@ -181,12 +181,7 @@ export default function EmployeeSpacePage() {
     return () => window.clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    startGeoWatch();
-    return () => stopGeoWatch();
-  }, []);
-
-  const activateGps = useCallback(async () => {
+  const activateGps = useCallback(async (silent = false) => {
     setGpsStatus("loading");
     setGpsAddress(null);
     setGpsAccuracy(null);
@@ -194,10 +189,12 @@ export default function EmployeeSpacePage() {
       const pos = await getBestGeoPosition();
       if (!pos) {
         setGpsStatus("error");
-        toast.error(
-          "Impossible d'obtenir votre position. Vérifiez que le GPS est activé (mode haute précision) et que la localisation est autorisée pour ce navigateur.",
-          { duration: 6000 },
-        );
+        if (!silent) {
+          toast.error(
+            "Impossible d'obtenir votre position. Vérifiez que le GPS est activé.",
+            { duration: 5000 },
+          );
+        }
         return;
       }
 
@@ -213,15 +210,23 @@ export default function EmployeeSpacePage() {
         setGpsAddress(address.split(",").slice(0, 2).join(",").trim());
       }
 
-      toast.success(`Localisation GPS activée (±${accuracy}m)`);
+      if (!silent) toast.success(`Localisation GPS activée (±${accuracy}m)`);
     } catch {
       setGpsStatus("denied");
-      toast.error(
-        "Accès à la localisation refusé. Allez dans Paramètres > Site > Autorisations > Localisation et autorisez.",
-        { duration: 8000 },
-      );
+      if (!silent) {
+        toast.error(
+          "Accès à la localisation refusé. Autorisez la localisation pour ce site.",
+          { duration: 5000 },
+        );
+      }
     }
   }, []);
+
+  useEffect(() => {
+    startGeoWatch();
+    void activateGps(true);
+    return () => stopGeoWatch();
+  }, [activateGps]);
 
   useEffect(() => {
     let cancelled = false;
