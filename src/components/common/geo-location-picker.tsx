@@ -124,6 +124,8 @@ async function searchAddress(query: string): Promise<Array<{ lat: number; lng: n
 }
 
 type GeoStatus = "idle" | "loading" | "success" | "error" | "denied";
+const TARGET_AUTO_ACCURACY_METERS = 35;
+const MAX_ACCEPTED_AUTO_ACCURACY_METERS = 80;
 
 export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }: GeoLocationPickerProps) {
   const [geoStatus, setGeoStatus] = useState<GeoStatus>(coords ? "success" : "idle");
@@ -141,26 +143,27 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
   useEffect(() => {
     const value = input.trim();
 
-    if (!value || looksLikeUrl(value) || looksLikeCoords(value) || value.length < 3) {
+    if (!value || looksLikeUrl(value) || looksLikeCoords(value) || value.length < 2) {
       setLiveSearchLoading(false);
       setSearchResults([]);
       return;
     }
 
     setLiveSearchLoading(true);
+    let cancelled = false;
     const timeoutId = window.setTimeout(() => {
       void searchAddress(value)
         .then((results) => {
-          setSearchResults(results);
+          if (!cancelled) setSearchResults(results);
         })
         .finally(() => {
-          setLiveSearchLoading(false);
+          if (!cancelled) setLiveSearchLoading(false);
         });
-    }, 350);
+    }, 250);
 
     return () => {
+      cancelled = true;
       window.clearTimeout(timeoutId);
-      setLiveSearchLoading(false);
     };
   }, [input]);
 
@@ -199,14 +202,15 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
       const samples: GeolocationPosition[] = [];
       let lastErr: GeolocationPositionError | null = null;
 
-      for (let i = 0; i < 3; i += 1) {
+      for (let i = 0; i < 5; i += 1) {
         try {
           const sample = await getGeoSample(i === 0 ? 15_000 : 10_000);
           samples.push(sample);
+          if (sample.coords.accuracy <= TARGET_AUTO_ACCURACY_METERS) break;
         } catch (err) {
           lastErr = err as GeolocationPositionError;
         }
-        if (i < 2) await sleep(900);
+        if (i < 4) await sleep(1200);
       }
 
       if (samples.length === 0) {
@@ -225,15 +229,13 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
       }
 
       const roundedAccuracy = Math.round(best.coords.accuracy);
-      const softAccuracyLimit = 120;
-      const hardAccuracyLimit = 500;
-      if (best.coords.accuracy > hardAccuracyLimit) {
+      if (best.coords.accuracy > MAX_ACCEPTED_AUTO_ACCURACY_METERS) {
         toast.error(
           `Signal GPS très imprécis (±${roundedAccuracy}m). Réessayez ou utilisez la recherche Google Maps ci-dessous.`,
         );
         return;
       }
-      if (best.coords.accuracy > softAccuracyLimit) {
+      if (best.coords.accuracy > TARGET_AUTO_ACCURACY_METERS) {
         toast.warning(
           `Position approximative (±${roundedAccuracy}m). Coordonnées acceptées, mais vous pouvez relancer pour plus de précision.`,
         );
@@ -327,12 +329,9 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
               </p>
               {autoAccuracy != null && (
                 <p className="mt-1 text-[11px] text-green-700/90 dark:text-green-300/90">
-                  Précision GPS mesurée: ±{Math.round(autoAccuracy)}m
+                  Précision GPS : ±{Math.round(autoAccuracy)}m
                 </p>
               )}
-              <p className="mt-1 text-[11px] text-green-700/90 dark:text-green-300/90">
-                Le pointage utilise ces coordonnees GPS exactes (pas uniquement le texte d&apos;adresse).
-              </p>
               <a
                 href={`https://www.google.com/maps?q=${coords.lat},${coords.lng}`}
                 target="_blank"
@@ -370,7 +369,7 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
             ) : (
               <Navigation className="h-4 w-4" />
             )}
-            {geoLoading ? "Localisation en cours..." : "Me localiser automatiquement"}
+            {geoLoading ? "Localisation Google en cours..." : "Me localiser automatiquement"}
           </Button>
 
           <div className="flex items-center gap-3">
@@ -406,6 +405,16 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
           <p className="text-[11px] text-muted-foreground">
             Recherche via Google Maps. Accepte : adresse, lien Maps, ou coordonnées GPS.
           </p>
+
+          {!looksLikeUrl(input.trim()) && !looksLikeCoords(input.trim()) && input.trim().length >= 2 && (
+            <p className="text-[11px] text-muted-foreground">
+              {liveSearchLoading
+                ? "Recherche Google Maps en temps réel..."
+                : searchResults.length > 0
+                  ? `${searchResults.length} résultat(s) Google Maps`
+                  : "Aucun résultat Google Maps pour le moment."}
+            </p>
+          )}
 
           {/* Résultats de recherche */}
           {searchResults.length > 0 && (
