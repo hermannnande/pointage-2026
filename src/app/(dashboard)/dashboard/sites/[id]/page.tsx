@@ -219,7 +219,7 @@ export default function EditSitePage() {
             <GeoLocationPicker
               coords={coords}
               onCoordsChange={setCoords}
-              onAddressResolved={(addr) => { if (!address) setAddress(addr); }}
+              onAddressResolved={(addr) => setAddress(addr)}
             />
 
             {/* Rayon de couverture */}

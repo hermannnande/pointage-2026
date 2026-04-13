@@ -245,6 +245,9 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
               <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
                 {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
               </p>
+              <p className="mt-1 text-[11px] text-green-700/90 dark:text-green-300/90">
+                Le pointage utilise ces coordonnees GPS exactes (pas uniquement le texte d&apos;adresse).
+              </p>
               <a
                 href={`https://www.google.com/maps?q=${coords.lat},${coords.lng}`}
                 target="_blank"
