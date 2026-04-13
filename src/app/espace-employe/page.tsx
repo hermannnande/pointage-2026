@@ -56,15 +56,12 @@ function startGeoWatch() {
 
   geoWatchId = navigator.geolocation.watchPosition(
     (pos) => {
-      const newPos: GeoData = {
+      cachedPosition = {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
         accuracy: pos.coords.accuracy,
         timestamp: pos.timestamp,
       };
-      if (!cachedPosition || newPos.accuracy <= cachedPosition.accuracy) {
-        cachedPosition = newPos;
-      }
     },
     () => {},
     { enableHighAccuracy: true, maximumAge: 10_000 },
@@ -81,7 +78,7 @@ function stopGeoWatch() {
 function getCachedGeo(): GeoData | null {
   if (!cachedPosition) return null;
   const age = Date.now() - cachedPosition.timestamp;
-  if (age > 60_000) return null;
+  if (age > 15_000) return null;
   return cachedPosition;
 }
 
@@ -112,7 +109,7 @@ function requestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string 
         }
         resolve({ data: null, errorMsg: msg });
       },
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 10_000 },
+      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 },
     );
   });
 }
@@ -273,21 +270,25 @@ export default function EmployeeSpacePage() {
   async function runClock(type: EventType) {
     setLoadingAction(type);
     try {
-      let geo = getCachedGeo();
+      // Toujours demander une position fraiche au moment exact du pointage.
+      const freshRes = await requestGeoPosition();
+      let geo = freshRes.data;
+
       if (!geo) {
-        const freshRes = await requestGeoPosition();
-        if (freshRes.data) {
-          geo = freshRes.data;
-          cachedPosition = geo;
-          startGeoWatch();
-          setGeoReady(true);
-        } else {
-          toast.error(
-            freshRes.errorMsg || "Localisation requise. Activez le GPS de votre téléphone et réessayez.",
-            { duration: 6000 },
-          );
-          return;
-        }
+        // Fallback: si le GPS instantane echoue, on accepte seulement un cache tres recent.
+        geo = getCachedGeo();
+      }
+
+      if (geo) {
+        cachedPosition = geo;
+        startGeoWatch();
+        setGeoReady(true);
+      } else {
+        toast.error(
+          freshRes.errorMsg || "Localisation requise. Activez le GPS de votre téléphone et réessayez.",
+          { duration: 6000 },
+        );
+        return;
       }
 
       const res = await employeeClockAction({
