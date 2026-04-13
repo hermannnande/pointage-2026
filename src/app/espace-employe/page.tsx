@@ -74,7 +74,7 @@ function stopGeoWatch() {
   }
 }
 
-function freshGeoSample(timeoutMs: number): Promise<GeolocationPosition | null> {
+function freshGeoSample(timeoutMs: number, allowCache = false): Promise<GeolocationPosition | null> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       resolve(null);
@@ -83,71 +83,62 @@ function freshGeoSample(timeoutMs: number): Promise<GeolocationPosition | null> 
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve(pos),
       () => resolve(null),
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: allowCache ? 10_000 : 0 },
     );
   });
 }
 
-async function googleVerifyPosition(
+async function getBestGeoPosition(): Promise<GeolocationPosition | null> {
+  const samples: GeolocationPosition[] = [];
+
+  const cached = await freshGeoSample(8_000, true);
+  if (cached) samples.push(cached);
+
+  for (let i = 0; i < 3; i += 1) {
+    const sample = await freshGeoSample(i === 0 ? 15_000 : 10_000);
+    if (sample) {
+      samples.push(sample);
+      if (sample.coords.accuracy <= 50) break;
+    }
+    if (i < 2) await new Promise((r) => setTimeout(r, 800));
+  }
+
+  if (watchBest) samples.push(watchBest);
+
+  if (samples.length === 0) return null;
+
+  return samples.reduce((prev, curr) =>
+    curr.coords.accuracy < prev.coords.accuracy ? curr : prev,
+  );
+}
+
+async function googleResolveAddress(
   lat: number,
   lng: number,
-): Promise<{ verified: boolean; googleAddress: string | null }> {
+): Promise<string | null> {
   try {
     const resp = await fetch(
       `/api/geocode?mode=reverse&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
     );
-    if (!resp.ok) return { verified: false, googleAddress: null };
+    if (!resp.ok) return null;
     const data = await resp.json();
-    if (data.provider === "google" && data.display) {
-      return { verified: true, googleAddress: data.display as string };
-    }
-    return { verified: false, googleAddress: null };
+    return data.display ? String(data.display) : null;
   } catch {
-    return { verified: false, googleAddress: null };
+    return null;
   }
 }
-
-const MAX_EMPLOYEE_ACCURACY_METERS = 300;
 
 async function requestGoogleVerifiedPosition(): Promise<{
   latitude: number;
   longitude: number;
 } | null> {
-  const samples: GeolocationPosition[] = [];
-
-  for (let i = 0; i < 5; i += 1) {
-    const sample = await freshGeoSample(i === 0 ? 15_000 : 10_000);
-    if (sample) {
-      samples.push(sample);
-      if (sample.coords.accuracy <= 30) break;
-    }
-    if (i < 4) await new Promise((r) => setTimeout(r, 1000));
-  }
-
-  if (watchBest) {
-    const dominated = samples.length === 0 || watchBest.coords.accuracy < samples.reduce(
-      (best, s) => Math.min(best, s.coords.accuracy), Infinity,
-    );
-    if (dominated) samples.push(watchBest);
-  }
-
-  if (samples.length === 0) return null;
-
-  const best = samples.reduce((prev, curr) =>
-    curr.coords.accuracy < prev.coords.accuracy ? curr : prev,
-  );
-
-  if (best.coords.accuracy > MAX_EMPLOYEE_ACCURACY_METERS) {
-    return null;
-  }
+  const best = await getBestGeoPosition();
+  if (!best) return null;
 
   const lat = best.coords.latitude;
   const lng = best.coords.longitude;
 
-  const { verified } = await googleVerifyPosition(lat, lng);
-  if (!verified) {
-    return null;
-  }
+  await googleResolveAddress(lat, lng);
 
   return { latitude: lat, longitude: lng };
 }
@@ -200,29 +191,35 @@ export default function EmployeeSpacePage() {
     setGpsAddress(null);
     setGpsAccuracy(null);
     try {
-      const pos = await freshGeoSample(15_000);
+      const pos = await getBestGeoPosition();
       if (!pos) {
         setGpsStatus("error");
-        toast.error("Impossible d'obtenir votre position. Vérifiez que le GPS est activé.");
+        toast.error(
+          "Impossible d'obtenir votre position. Vérifiez que le GPS est activé (mode haute précision) et que la localisation est autorisée pour ce navigateur.",
+          { duration: 6000 },
+        );
         return;
       }
-      setGpsAccuracy(Math.round(pos.coords.accuracy));
 
-      const { verified, googleAddress } = await googleVerifyPosition(
+      const accuracy = Math.round(pos.coords.accuracy);
+      setGpsAccuracy(accuracy);
+      setGpsStatus("active");
+
+      const address = await googleResolveAddress(
         pos.coords.latitude,
         pos.coords.longitude,
       );
-      if (verified) {
-        setGpsStatus("active");
-        setGpsAddress(googleAddress ? googleAddress.split(",").slice(0, 2).join(",").trim() : null);
-        toast.success("Localisation Google Maps activée !");
-      } else {
-        setGpsStatus("error");
-        toast.error("Google Maps n'a pas pu vérifier votre position. Réessayez.");
+      if (address) {
+        setGpsAddress(address.split(",").slice(0, 2).join(",").trim());
       }
+
+      toast.success(`Localisation GPS activée (±${accuracy}m)`);
     } catch {
       setGpsStatus("denied");
-      toast.error("Accès à la localisation refusé. Autorisez le GPS dans les paramètres.");
+      toast.error(
+        "Accès à la localisation refusé. Allez dans Paramètres > Site > Autorisations > Localisation et autorisez.",
+        { duration: 8000 },
+      );
     }
   }, []);
 
@@ -346,7 +343,7 @@ export default function EmployeeSpacePage() {
 
       if (!geo) {
         toast.error(
-          "Localisation Google Maps impossible. Vérifiez que le GPS est activé (mode haute précision) et réessayez.",
+          "Localisation impossible. Cliquez d'abord sur « Activer » dans le bandeau GPS ci-dessus, puis réessayez.",
           { duration: 6000 },
         );
         return;
