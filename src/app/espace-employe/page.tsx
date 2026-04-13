@@ -50,6 +50,10 @@ type GeoData = { latitude: number; longitude: number; accuracy: number; timestam
 let cachedPosition: GeoData | null = null;
 let geoWatchId: number | null = null;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function startGeoWatch() {
   if (typeof navigator === "undefined" || !navigator.geolocation) return;
   if (geoWatchId !== null) return;
@@ -122,6 +126,18 @@ function requestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string 
   });
 }
 
+async function requestBestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string | null }> {
+  const first = await requestGeoPosition();
+  if (!first.data) return first;
+
+  await sleep(1200);
+  const second = await requestGeoPosition();
+  if (!second.data) return first;
+
+  // On retient la lecture la plus précise (accuracy la plus basse).
+  return second.data.accuracy <= first.data.accuracy ? second : first;
+}
+
 const STATUS_LABELS: Record<AttendanceStatus, { label: string; color: string }> = {
   PRESENT: { label: "Présent", color: "bg-green-100 text-green-700" },
   ABSENT: { label: "Absent", color: "bg-red-100 text-red-700" },
@@ -158,6 +174,7 @@ export default function EmployeeSpacePage() {
   }, []);
 
   useEffect(() => {
+    startGeoWatch();
     if (getCachedGeo()) setGeoReady(true);
     return () => stopGeoWatch();
   }, []);
@@ -278,8 +295,8 @@ export default function EmployeeSpacePage() {
   async function runClock(type: EventType) {
     setLoadingAction(type);
     try {
-      // Toujours demander une position fraiche au moment exact du pointage.
-      const freshRes = await requestGeoPosition();
+      // Toujours demander une position fraiche, en double lecture pour limiter les faux GPS mobiles.
+      const freshRes = await requestBestGeoPosition();
       const geo = freshRes.data;
       if (!geo) {
         toast.error(
