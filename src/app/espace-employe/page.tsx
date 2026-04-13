@@ -90,6 +90,14 @@ function requestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string 
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const ageMs = Date.now() - pos.timestamp;
+        if (ageMs > 15_000) {
+          resolve({
+            data: null,
+            errorMsg: "Position GPS trop ancienne détectée. Attendez 2-3 secondes puis réessayez.",
+          });
+          return;
+        }
         const data: GeoData = {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
@@ -272,30 +280,24 @@ export default function EmployeeSpacePage() {
     try {
       // Toujours demander une position fraiche au moment exact du pointage.
       const freshRes = await requestGeoPosition();
-      let geo = freshRes.data;
-
+      const geo = freshRes.data;
       if (!geo) {
-        // Fallback: si le GPS instantane echoue, on accepte seulement un cache tres recent.
-        geo = getCachedGeo();
-      }
-
-      if (geo) {
-        cachedPosition = geo;
-        startGeoWatch();
-        setGeoReady(true);
-      } else {
         toast.error(
           freshRes.errorMsg || "Localisation requise. Activez le GPS de votre téléphone et réessayez.",
           { duration: 6000 },
         );
         return;
       }
+      cachedPosition = geo;
+      startGeoWatch();
+      setGeoReady(true);
 
       const res = await employeeClockAction({
         type,
         latitude: geo.latitude,
         longitude: geo.longitude,
         accuracy: geo.accuracy,
+        gpsTimestamp: geo.timestamp,
       });
       if (!res.success) {
         toast.error(res.error ?? "Action impossible");

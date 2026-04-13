@@ -24,6 +24,7 @@ export async function employeeClockAction(input: {
   latitude?: number;
   longitude?: number;
   accuracy?: number;
+  gpsTimestamp?: number;
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const session = await getEmployeeSession();
@@ -54,6 +55,7 @@ export async function employeeClockAction(input: {
       latitude: input.latitude,
       longitude: input.longitude,
       accuracy: input.accuracy,
+      gpsTimestamp: input.gpsTimestamp,
       source: "MOBILE_WEB" as EventSource,
     });
 

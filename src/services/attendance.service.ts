@@ -40,12 +40,13 @@ export interface ClockPayload {
   latitude?: number;
   longitude?: number;
   accuracy?: number;
+  gpsTimestamp?: number;
   source?: EventSource;
   notes?: string;
 }
 
 export async function clockAction(payload: ClockPayload) {
-  const { employeeId, companyId, type, latitude, longitude, accuracy, source = "WEB", notes } = payload;
+  const { employeeId, companyId, type, latitude, longitude, accuracy, gpsTimestamp, source = "WEB", notes } = payload;
   const now = new Date();
   const today = todayDate();
 
@@ -61,6 +62,15 @@ export async function clockAction(payload: ClockPayload) {
     throw new Error(
       "Localisation requise. Activez le GPS sur votre téléphone puis réessayez."
     );
+  }
+
+  if (source !== "KIOSK" && gpsTimestamp != null) {
+    const gpsAgeMs = now.getTime() - gpsTimestamp;
+    if (gpsAgeMs > 45_000) {
+      throw new Error(
+        "Position GPS obsolète détectée. Rafraîchissez la position puis réessayez."
+      );
+    }
   }
 
   let isGeofenceOk: boolean | null = null;
