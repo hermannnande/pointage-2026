@@ -124,8 +124,8 @@ async function searchAddress(query: string): Promise<Array<{ lat: number; lng: n
 }
 
 type GeoStatus = "idle" | "loading" | "success" | "error" | "denied";
-const TARGET_AUTO_ACCURACY_METERS = 35;
-const MAX_ACCEPTED_AUTO_ACCURACY_METERS = 80;
+const TARGET_AUTO_ACCURACY_METERS = 50;
+const MAX_ACCEPTED_AUTO_ACCURACY_METERS = 500;
 
 export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }: GeoLocationPickerProps) {
   const [geoStatus, setGeoStatus] = useState<GeoStatus>(coords ? "success" : "idle");
