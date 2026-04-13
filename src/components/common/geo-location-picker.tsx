@@ -28,13 +28,11 @@ interface GeoLocationPickerProps {
 function extractCoordsFromUrl(url: string): GeoCoords | null {
   const cleaned = url.trim();
 
-  // 1) Priorite aux coordonnees de destination explicites (liens d'itineraire).
   const destinationMatch = cleaned.match(/[?&](?:destination|daddr)=(-?\d+\.?\d*)[,+](-?\d+\.?\d*)/i);
   if (destinationMatch) {
     return { lat: parseFloat(destinationMatch[1]), lng: parseFloat(destinationMatch[2]) };
   }
 
-  // 2) Coordonnees du lieu (Google Place share).
   const bangMatch = cleaned.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
   if (bangMatch) return { lat: parseFloat(bangMatch[1]), lng: parseFloat(bangMatch[2]) };
 
@@ -57,7 +55,6 @@ function extractCoordsFromUrl(url: string): GeoCoords | null {
     if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return { lat: a, lng: b };
   }
 
-  // 3) Fallback: centre de carte / viewport (moins fiable pour l'itineraire).
   const atMatch = cleaned.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
 
@@ -87,16 +84,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function geolocationErrorMessage(err: GeolocationPositionError): string {
-  if (err.code === 1) return "Accès à la position refusé. Autorisez la localisation dans les paramètres.";
-  if (err.code === 2) return "Position introuvable. Activez le GPS précis puis réessayez.";
-  if (err.code === 3) return "Délai dépassé. Réessayez dans un endroit dégagé.";
-  return "Impossible de vous localiser. Utilisez la barre de recherche.";
-}
-
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
-    const resp = await fetch(`/api/geocode?mode=reverse&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`);
+    const resp = await fetch(
+      `/api/geocode?mode=reverse&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+    );
     if (!resp.ok) return null;
     const data = await resp.json();
     return data.display
@@ -107,7 +99,9 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   }
 }
 
-async function searchAddress(query: string): Promise<Array<{ lat: number; lng: number; display: string }>> {
+async function searchAddress(
+  query: string,
+): Promise<Array<{ lat: number; lng: number; display: string }>> {
   try {
     const resp = await fetch(`/api/geocode?mode=search&q=${encodeURIComponent(query)}`);
     if (!resp.ok) return [];
@@ -124,17 +118,22 @@ async function searchAddress(query: string): Promise<Array<{ lat: number; lng: n
 }
 
 type GeoStatus = "idle" | "loading" | "success" | "error" | "denied";
-const TARGET_AUTO_ACCURACY_METERS = 50;
-const MAX_ACCEPTED_AUTO_ACCURACY_METERS = 500;
 
-export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }: GeoLocationPickerProps) {
+export function GeoLocationPicker({
+  coords,
+  onCoordsChange,
+  onAddressResolved,
+}: GeoLocationPickerProps) {
   const [geoStatus, setGeoStatus] = useState<GeoStatus>(coords ? "success" : "idle");
   const [input, setInput] = useState("");
   const [processing, setProcessing] = useState(false);
   const [liveSearchLoading, setLiveSearchLoading] = useState(false);
   const [autoAccuracy, setAutoAccuracy] = useState<number | null>(null);
-  const [searchResults, setSearchResults] = useState<Array<{ lat: number; lng: number; display: string }>>([]);
+  const [searchResults, setSearchResults] = useState<
+    Array<{ lat: number; lng: number; display: string }>
+  >([]);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [autoFailed, setAutoFailed] = useState(false);
 
   useEffect(() => {
     if (coords) setGeoStatus("success");
@@ -194,10 +193,12 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
 
   async function requestGeolocation() {
     if (!navigator.geolocation) {
-      toast.error("Géolocalisation non supportée par votre navigateur.");
+      toast.error("Géolocalisation non supportée. Utilisez la saisie manuelle ci-dessous.");
+      setAutoFailed(true);
       return;
     }
     setGeoLoading(true);
+    setAutoFailed(false);
     try {
       const samples: GeolocationPosition[] = [];
       let lastErr: GeolocationPositionError | null = null;
@@ -206,7 +207,7 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
         try {
           const sample = await getGeoSample(i === 0 ? 15_000 : 10_000);
           samples.push(sample);
-          if (sample.coords.accuracy <= TARGET_AUTO_ACCURACY_METERS) break;
+          if (sample.coords.accuracy <= 50) break;
         } catch (err) {
           lastErr = err as GeolocationPositionError;
         }
@@ -214,8 +215,18 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
       }
 
       if (samples.length === 0) {
-        if (lastErr) toast.error(geolocationErrorMessage(lastErr));
-        else toast.error("Impossible de vous localiser. Utilisez la recherche Google Maps ci-dessous.");
+        if (lastErr) {
+          if (lastErr.code === 1) {
+            toast.error("Accès à la position refusé. Autorisez la localisation puis réessayez, ou utilisez la saisie manuelle.");
+          } else if (lastErr.code === 2) {
+            toast.error("Position introuvable. Activez le GPS précis puis réessayez, ou utilisez la saisie manuelle.");
+          } else {
+            toast.error("Délai dépassé. Réessayez ou utilisez la saisie manuelle ci-dessous.");
+          }
+        } else {
+          toast.error("Impossible de vous localiser. Utilisez la saisie manuelle ci-dessous.");
+        }
+        setAutoFailed(true);
         return;
       }
 
@@ -224,25 +235,21 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
       );
 
       if (!isValidCoord(best.coords.latitude, best.coords.longitude)) {
-        toast.error("Coordonnées GPS invalides. Utilisez la recherche Google Maps ci-dessous.");
+        toast.error("Coordonnées GPS invalides. Utilisez la saisie manuelle ci-dessous.");
+        setAutoFailed(true);
         return;
       }
 
       const roundedAccuracy = Math.round(best.coords.accuracy);
-      if (best.coords.accuracy > MAX_ACCEPTED_AUTO_ACCURACY_METERS) {
-        toast.error(
-          `Signal GPS très imprécis (±${roundedAccuracy}m). Réessayez ou utilisez la recherche Google Maps ci-dessous.`,
-        );
-        return;
-      }
-      if (best.coords.accuracy > TARGET_AUTO_ACCURACY_METERS) {
+
+      if (best.coords.accuracy > 50) {
         toast.warning(
-          `Position approximative (±${roundedAccuracy}m). Coordonnées acceptées, mais vous pouvez relancer pour plus de précision.`,
+          `Position approximative (±${roundedAccuracy}m). Coordonnées acceptées. Relancez pour plus de précision.`,
         );
       }
 
       await applyCoords(best.coords.latitude, best.coords.longitude, best.coords.accuracy);
-      toast.success(`Position GPS détectée (précision ±${roundedAccuracy}m)`);
+      toast.success(`Position Google Maps détectée (précision ±${roundedAccuracy}m)`);
     } finally {
       setGeoLoading(false);
     }
@@ -260,7 +267,7 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
         const extracted = extractCoordsFromUrl(value);
         if (extracted && isValidCoord(extracted.lat, extracted.lng)) {
           await applyCoords(extracted.lat, extracted.lng);
-          toast.success("Coordonnées enregistrées !");
+          toast.success("Coordonnées Google Maps enregistrées !");
           return;
         }
         toast.error("Coordonnées invalides. Format attendu : 5.3364, -3.9638");
@@ -279,12 +286,14 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
                 extracted = extractCoordsFromUrl(data.resolvedUrl);
               }
             }
-          } catch { /* fallback to search */ }
+          } catch {
+            /* ignore */
+          }
         }
 
         if (extracted && isValidCoord(extracted.lat, extracted.lng)) {
           await applyCoords(extracted.lat, extracted.lng);
-          toast.success("Position extraite du lien !");
+          toast.success("Position extraite du lien Google Maps !");
           return;
         }
         toast.error("Impossible d'extraire les coordonnées de ce lien.");
@@ -293,12 +302,12 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
 
       const results = await searchAddress(value);
       if (results.length === 0) {
-        toast.error("Aucun résultat. Essayez avec plus de détails (ex: nom + ville).");
+        toast.error("Aucun résultat Google Maps. Essayez avec plus de détails.");
         return;
       }
       if (results.length === 1) {
         await applyCoords(results[0].lat, results[0].lng);
-        toast.success("Position trouvée !");
+        toast.success("Position Google Maps trouvée !");
         return;
       }
       setSearchResults(results);
@@ -311,9 +320,10 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
     <div className="space-y-3">
       <Label>
         <Navigation className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-        Position GPS du site
+        Position GPS du site (Google Maps)
       </Label>
 
+      {/* Position confirmée */}
       {geoStatus === "success" && coords && (
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
           <div className="flex items-start gap-3">
@@ -322,7 +332,7 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                Position enregistrée
+                Position Google Maps enregistrée
               </p>
               <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
                 {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
@@ -338,7 +348,7 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
                 rel="noopener noreferrer"
                 className="mt-1 inline-block text-xs text-green-700 underline hover:text-green-900 dark:text-green-300"
               >
-                Voir sur Google Maps
+                Vérifier sur Google Maps
               </a>
             </div>
             <Button
@@ -346,7 +356,10 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
               variant="ghost"
               size="sm"
               className="shrink-0 text-xs text-green-700 hover:text-green-800 dark:text-green-300"
-              onClick={() => setGeoStatus("idle")}
+              onClick={() => {
+                setGeoStatus("idle");
+                setAutoFailed(false);
+              }}
             >
               Modifier
             </Button>
@@ -354,9 +367,10 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
         </div>
       )}
 
+      {/* Sélection de position */}
       {geoStatus !== "success" && (
         <div className="space-y-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-4">
-          {/* Bouton GPS auto */}
+          {/* Bouton localisation automatique — PRIORITAIRE */}
           <Button
             type="button"
             variant="default"
@@ -369,74 +383,93 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
             ) : (
               <Navigation className="h-4 w-4" />
             )}
-            {geoLoading ? "Localisation Google en cours..." : "Me localiser automatiquement"}
+            {geoLoading
+              ? "Détection Google Maps en cours..."
+              : "Me localiser automatiquement (Google Maps)"}
           </Button>
 
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">ou rechercher avec Google Maps</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          {/* Barre de recherche Google Maps */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder="Adresse, lien Google Maps, ou coordonnées GPS..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), void handleSubmit())}
-              />
-            </div>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              className="shrink-0"
-              disabled={processing || liveSearchLoading || !input.trim()}
-              onClick={() => void handleSubmit()}
-            >
-              {processing || liveSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "OK"}
-            </Button>
-          </div>
-
-          <p className="text-[11px] text-muted-foreground">
-            Recherche via Google Maps. Accepte : adresse, lien Maps, ou coordonnées GPS.
+          <p className="text-center text-[11px] text-muted-foreground">
+            Méthode recommandée : utilise le GPS de votre appareil + Google Maps
           </p>
 
-          {!looksLikeUrl(input.trim()) && !looksLikeCoords(input.trim()) && input.trim().length >= 2 && (
-            <p className="text-[11px] text-muted-foreground">
-              {liveSearchLoading
-                ? "Recherche Google Maps en temps réel..."
-                : searchResults.length > 0
-                  ? `${searchResults.length} résultat(s) Google Maps`
-                  : "Aucun résultat Google Maps pour le moment."}
-            </p>
-          )}
+          {/* Saisie manuelle — UNIQUEMENT si auto échoue */}
+          {autoFailed && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium text-amber-600">
+                  Localisation auto impossible — saisie manuelle
+                </span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
 
-          {/* Résultats de recherche */}
-          {searchResults.length > 0 && (
-            <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border bg-background p-1">
-              <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                Sélectionnez le bon emplacement :
-              </p>
-              {searchResults.map((r, i) => (
-                <button
-                  key={i}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Adresse, lien Google Maps, ou coordonnées GPS..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && (e.preventDefault(), void handleSubmit())
+                    }
+                  />
+                </div>
+                <Button
                   type="button"
-                  className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors hover:bg-primary/5"
-                  onClick={() => {
-                    void applyCoords(r.lat, r.lng);
-                    toast.success("Position définie !");
-                  }}
+                  variant="default"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={processing || liveSearchLoading || !input.trim()}
+                  onClick={() => void handleSubmit()}
                 >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span className="text-xs">{r.display}</span>
-                </button>
-              ))}
-            </div>
+                  {processing || liveSearchLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "OK"
+                  )}
+                </Button>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground">
+                Recherche Google Maps. Accepte : adresse, lien Maps, ou coordonnées GPS.
+              </p>
+
+              {!looksLikeUrl(input.trim()) &&
+                !looksLikeCoords(input.trim()) &&
+                input.trim().length >= 2 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {liveSearchLoading
+                      ? "Recherche Google Maps en temps réel..."
+                      : searchResults.length > 0
+                        ? `${searchResults.length} résultat(s) Google Maps`
+                        : "Aucun résultat Google Maps pour le moment."}
+                  </p>
+                )}
+
+              {searchResults.length > 0 && (
+                <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border bg-background p-1">
+                  <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    Sélectionnez le bon emplacement :
+                  </p>
+                  {searchResults.map((r, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors hover:bg-primary/5"
+                      onClick={() => {
+                        void applyCoords(r.lat, r.lng);
+                        toast.success("Position Google Maps définie !");
+                      }}
+                    >
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span className="text-xs">{r.display}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
