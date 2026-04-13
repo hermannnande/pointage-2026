@@ -72,6 +72,10 @@ export async function getEmployeeTodayAction() {
 
 export async function getEmployeeSiteScheduleAction(): Promise<{
   workEndTime: string | null;
+  siteName: string | null;
+  siteLatitude: number | null;
+  siteLongitude: number | null;
+  geofenceRadius: number | null;
 } | null> {
   const session = await getEmployeeSession();
   if (!session) return null;
@@ -79,12 +83,24 @@ export async function getEmployeeSiteScheduleAction(): Promise<{
   const employee = await prisma.employee.findFirst({
     where: { id: session.employeeId, companyId: session.companyId },
     select: {
-      site: { select: { workEndTime: true } },
+      site: {
+        select: {
+          name: true,
+          workEndTime: true,
+          latitude: true,
+          longitude: true,
+          geofenceRadius: true,
+        },
+      },
     },
   });
 
   return {
     workEndTime: employee?.site?.workEndTime ?? null,
+    siteName: employee?.site?.name ?? null,
+    siteLatitude: employee?.site?.latitude ?? null,
+    siteLongitude: employee?.site?.longitude ?? null,
+    geofenceRadius: employee?.site?.geofenceRadius ?? null,
   };
 }
 

@@ -170,6 +170,12 @@ export default function EmployeeSpacePage() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const [workEndTime, setWorkEndTime] = useState<string | null>(null);
+  const [siteInfo, setSiteInfo] = useState<{
+    name: string | null;
+    lat: number | null;
+    lng: number | null;
+    radius: number | null;
+  }>({ name: null, lat: null, lng: null, radius: null });
   const [subBlocked, setSubBlocked] = useState(false);
   const [subBlockedMsg, setSubBlockedMsg] = useState("");
   const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "active" | "denied" | "error">("idle");
@@ -266,6 +272,14 @@ export default function EmployeeSpacePage() {
       setRecord(data);
       setHistory(hist);
       setWorkEndTime(schedule?.workEndTime ?? null);
+      if (schedule) {
+        setSiteInfo({
+          name: schedule.siteName,
+          lat: schedule.siteLatitude,
+          lng: schedule.siteLongitude,
+          radius: schedule.geofenceRadius,
+        });
+      }
     } catch {
       toast.error("Impossible de charger vos données");
     } finally {
@@ -551,6 +565,26 @@ export default function EmployeeSpacePage() {
               >
                 Réessayer
               </Button>
+            </div>
+          )}
+
+          {siteInfo.name && (
+            <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                <MapPin className="mr-1 inline h-3 w-3" />
+                Site : {siteInfo.name}
+                {siteInfo.radius != null && ` · Rayon: ${siteInfo.radius}m`}
+              </p>
+              {siteInfo.lat != null && siteInfo.lng != null && (
+                <a
+                  href={`https://www.google.com/maps?q=${siteInfo.lat},${siteInfo.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-primary underline"
+                >
+                  Voir le site sur Google Maps
+                </a>
+              )}
             </div>
           )}
         </CardContent>

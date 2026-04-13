@@ -83,7 +83,7 @@ export async function clockAction(payload: ClockPayload) {
       const distanceRounded = Math.round(distToSite);
       const missingMeters = Math.max(1, Math.round(distToSite - site.geofenceRadius));
       throw new Error(
-        `Hors périmètre du site: ${distanceRounded}m détectés (rayon autorisé ${site.geofenceRadius}m). Rapprochez-vous d'environ ${missingMeters}m puis réessayez.`,
+        `Hors périmètre de "${site.name}" : vous êtes à ${distanceRounded}m du site (rayon autorisé: ${site.geofenceRadius}m). Rapprochez-vous d'environ ${missingMeters}m. [Site: ${site.latitude?.toFixed(5)},${site.longitude?.toFixed(5)} | Vous: ${latitude.toFixed(5)},${longitude.toFixed(5)}]`,
       );
     }
   }
