@@ -320,24 +320,27 @@ enum AttendanceStatus {
 }
 
 model AttendanceEvent {
-  id           String      @id @default(cuid())
-  recordId     String      @map("record_id")
-  employeeId   String      @map("employee_id")
-  type         EventType
-  timestamp    DateTime    @default(now())
-  latitude     Float?
-  longitude    Float?
-  isGeofenceOk Boolean?    @map("is_geofence_ok")
-  photoUrl     String?     @map("photo_url")
-  source       EventSource @default(WEB)
-  deviceInfo   String?     @map("device_info")
-  ipAddress    String?     @map("ip_address")
-  createdAt    DateTime    @default(now()) @map("created_at")
+  id             String      @id @default(cuid())
+  recordId       String      @map("record_id")
+  employeeId     String      @map("employee_id")
+  type           EventType
+  timestamp      DateTime    @default(now())
+  latitude       Float?
+  longitude      Float?
+  accuracy       Float?      @map("accuracy_meters")
+  isGeofenceOk   Boolean?    @map("is_geofence_ok")
+  distanceToSite Float?      @map("distance_to_site")
+  photoUrl       String?     @map("photo_url")
+  source         EventSource @default(WEB)
+  deviceInfo     String?     @map("device_info")
+  ipAddress      String?     @map("ip_address")
+  createdAt      DateTime    @default(now()) @map("created_at")
 
   record   AttendanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
   employee Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([recordId])
+  @@index([employeeId, timestamp])
   @@map("attendance_events")
 }
 

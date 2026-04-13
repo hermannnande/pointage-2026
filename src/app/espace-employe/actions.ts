@@ -23,6 +23,7 @@ export async function employeeClockAction(input: {
   type: EventType;
   latitude?: number;
   longitude?: number;
+  accuracy?: number;
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const session = await getEmployeeSession();
@@ -52,6 +53,7 @@ export async function employeeClockAction(input: {
       type: input.type,
       latitude: input.latitude,
       longitude: input.longitude,
+      accuracy: input.accuracy,
       source: "MOBILE_WEB" as EventSource,
     });
 
