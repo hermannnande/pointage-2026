@@ -143,27 +143,10 @@ export default function NewSitePage() {
                 Le site <span className="font-semibold">{createdName}</span> a été créé.
               </p>
             </div>
-            <div className="w-full rounded-xl border-2 border-primary/30 bg-primary/5 p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Code du site</p>
-              <p className="mt-2 font-mono text-3xl font-extrabold tracking-[0.3em] text-primary">
-                {createdCode}
+            <div className="w-full rounded-xl border-2 border-green-200 bg-green-50 p-5 text-center">
+              <p className="text-sm text-slate-600">
+                Les employés de ce site se connecteront avec leur <strong>numéro de téléphone</strong> et leur <strong>mot de passe</strong>.
               </p>
-              <p className="mt-2 text-xs text-slate-500">
-                Les employés utiliseront ce code pour se connecter à leur espace de pointage.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 gap-2"
-                onClick={() => {
-                  void navigator.clipboard.writeText(createdCode);
-                  toast.success("Code copié !");
-                }}
-              >
-                <Copy className="h-3.5 w-3.5" />
-                Copier le code
-              </Button>
             </div>
             <Button className="mt-2 w-full" onClick={() => router.push("/dashboard/sites")}>
               Voir tous les sites

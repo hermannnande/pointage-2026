@@ -45,7 +45,7 @@ export async function getSitesForSelectAction() {
 
 export async function createEmployeeAction(
   input: CreateEmployeeInput,
-): Promise<ActionResult<{ id: string; matricule: string; siteCode: string | null }>> {
+): Promise<ActionResult<{ id: string; matricule: string }>> {
   try {
     const ctx = await getContext();
     requirePermission(ctx, PERMISSIONS.EMPLOYEES_CREATE);
@@ -57,19 +57,12 @@ export async function createEmployeeAction(
 
     const employee = await employeeService.createEmployee(ctx.companyId, parsed.data);
 
-    let siteCode: string | null = null;
-    if (employee.siteId) {
-      const site = await siteService.getSiteById(ctx.companyId, employee.siteId);
-      siteCode = site?.code ?? null;
-    }
-
     revalidatePath("/dashboard/employees");
     return {
       success: true,
       data: {
         id: employee.id,
         matricule: employee.matricule || "",
-        siteCode,
       },
     };
   } catch (err) {

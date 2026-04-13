@@ -64,20 +64,6 @@ export default function SitesPage() {
         cell: ({ row }) => row.original.name,
       },
       {
-        id: "code",
-        header: "Code employé",
-        cell: ({ row }) => {
-          const code = (row.original as SiteRow & { code?: string | null }).code;
-          return code ? (
-            <span className="font-mono text-sm font-bold tracking-wider text-primary">
-              {code}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          );
-        },
-      },
-      {
         accessorKey: "city",
         header: "Ville",
         cell: ({ row }) => row.original.city ?? "—",
