@@ -21,10 +21,8 @@ export async function getEmployeeSession(): Promise<EmployeeSessionPayload | nul
 
 export async function employeeClockAction(input: {
   type: EventType;
-  latitude?: number;
-  longitude?: number;
-  accuracy?: number;
-  gpsTimestamp?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const session = await getEmployeeSession();
@@ -54,8 +52,6 @@ export async function employeeClockAction(input: {
       type: input.type,
       latitude: input.latitude,
       longitude: input.longitude,
-      accuracy: input.accuracy,
-      gpsTimestamp: input.gpsTimestamp,
       source: "MOBILE_WEB" as EventSource,
     });
 
@@ -76,9 +72,6 @@ export async function getEmployeeTodayAction() {
 
 export async function getEmployeeSiteScheduleAction(): Promise<{
   workEndTime: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  geofenceRadius: number | null;
 } | null> {
   const session = await getEmployeeSession();
   if (!session) return null;
@@ -86,15 +79,12 @@ export async function getEmployeeSiteScheduleAction(): Promise<{
   const employee = await prisma.employee.findFirst({
     where: { id: session.employeeId, companyId: session.companyId },
     select: {
-      site: { select: { workEndTime: true, latitude: true, longitude: true, geofenceRadius: true } },
+      site: { select: { workEndTime: true } },
     },
   });
 
   return {
     workEndTime: employee?.site?.workEndTime ?? null,
-    latitude: employee?.site?.latitude ?? null,
-    longitude: employee?.site?.longitude ?? null,
-    geofenceRadius: employee?.site?.geofenceRadius ?? null,
   };
 }
 

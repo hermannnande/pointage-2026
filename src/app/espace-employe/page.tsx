@@ -46,26 +46,8 @@ function fmtTime(d: Date | string | null | undefined): string {
   });
 }
 
-type GeoData = { latitude: number; longitude: number; accuracy: number; timestamp: number };
-type SiteGeo = { latitude: number; longitude: number; geofenceRadius: number } | null;
-let cachedPosition: GeoData | null = null;
+let cachedPosition: { latitude: number; longitude: number } | null = null;
 let geoWatchId: number | null = null;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6_371_000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function startGeoWatch() {
   if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -76,12 +58,10 @@ function startGeoWatch() {
       cachedPosition = {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-        timestamp: pos.timestamp,
       };
     },
     () => {},
-    { enableHighAccuracy: true, maximumAge: 10_000 },
+    { enableHighAccuracy: false, maximumAge: 60_000 },
   );
 }
 
@@ -92,91 +72,27 @@ function stopGeoWatch() {
   }
 }
 
-function getCachedGeo(): GeoData | null {
-  if (!cachedPosition) return null;
-  const age = Date.now() - cachedPosition.timestamp;
-  if (age > 15_000) return null;
+function getCachedGeo() {
   return cachedPosition;
 }
 
-function requestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string | null }> {
+function requestGeoPosition(): Promise<{ latitude: number; longitude: number } | null> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      resolve({ data: null, errorMsg: "Localisation non supportée par votre navigateur." });
+      resolve(null);
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const ageMs = Date.now() - pos.timestamp;
-        if (ageMs > 15_000) {
-          resolve({
-            data: null,
-            errorMsg: "Position GPS trop ancienne détectée. Attendez 2-3 secondes puis réessayez.",
-          });
-          return;
-        }
-        const data: GeoData = {
+        resolve({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          timestamp: pos.timestamp,
-        };
-        resolve({ data, errorMsg: null });
+        });
       },
-      (err) => {
-        let msg = "Erreur inconnue.";
-        if (err.code === 1) {
-          msg = "Permission refusée. Vous devez autoriser la localisation dans les paramètres de votre navigateur (Chrome/Safari) pour ce site.";
-        } else if (err.code === 2) {
-          msg = "Position introuvable. Assurez-vous que le GPS est activé sur votre téléphone.";
-        } else if (err.code === 3) {
-          msg = "Délai d'attente dépassé. Réessayez dans un endroit dégagé.";
-        }
-        resolve({ data: null, errorMsg: msg });
-      },
-      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 },
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 15_000, maximumAge: 60_000 },
     );
   });
-}
-
-async function requestBestGeoPosition(
-  siteGeo: SiteGeo,
-): Promise<{ data: GeoData | null; errorMsg: string | null }> {
-  const samples: GeoData[] = [];
-  let lastErr: string | null = null;
-
-  for (let i = 0; i < 3; i += 1) {
-    const r = await requestGeoPosition();
-    if (r.data) samples.push(r.data);
-    else if (r.errorMsg) lastErr = r.errorMsg;
-    if (i < 2) await sleep(900);
-  }
-
-  if (samples.length === 0) return { data: null, errorMsg: lastErr };
-
-  if (siteGeo) {
-    let best = samples[0];
-    let bestDist = distanceMeters(
-      best.latitude,
-      best.longitude,
-      siteGeo.latitude,
-      siteGeo.longitude,
-    );
-    for (const s of samples.slice(1)) {
-      const d = distanceMeters(s.latitude, s.longitude, siteGeo.latitude, siteGeo.longitude);
-      if (d < bestDist) {
-        best = s;
-        bestDist = d;
-      }
-    }
-    return { data: best, errorMsg: null };
-  }
-
-  // fallback: meilleure precision
-  const bestAccuracy = samples.reduce((best, s) =>
-    s.accuracy <= best.accuracy ? s : best
-  );
-  return { data: bestAccuracy, errorMsg: null };
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, { label: string; color: string }> = {
@@ -205,7 +121,6 @@ export default function EmployeeSpacePage() {
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [geoReady, setGeoReady] = useState(false);
-  const [siteGeo, setSiteGeo] = useState<SiteGeo>(null);
   const [workEndTime, setWorkEndTime] = useState<string | null>(null);
   const [subBlocked, setSubBlocked] = useState(false);
   const [subBlockedMsg, setSubBlockedMsg] = useState("");
@@ -259,15 +174,6 @@ export default function EmployeeSpacePage() {
       setRecord(data);
       setHistory(hist);
       setWorkEndTime(schedule?.workEndTime ?? null);
-      if (schedule?.latitude != null && schedule?.longitude != null && schedule?.geofenceRadius != null) {
-        setSiteGeo({
-          latitude: schedule.latitude,
-          longitude: schedule.longitude,
-          geofenceRadius: schedule.geofenceRadius,
-        });
-      } else {
-        setSiteGeo(null);
-      }
     } catch {
       toast.error("Impossible de charger vos données");
     } finally {
@@ -346,26 +252,12 @@ export default function EmployeeSpacePage() {
   async function runClock(type: EventType) {
     setLoadingAction(type);
     try {
-      // Toujours demander une position fraiche, en double lecture pour limiter les faux GPS mobiles.
-      const freshRes = await requestBestGeoPosition(siteGeo);
-      const geo = freshRes.data;
-      if (!geo) {
-        toast.error(
-          freshRes.errorMsg || "Localisation requise. Activez le GPS de votre téléphone et réessayez.",
-          { duration: 6000 },
-        );
-        return;
-      }
-      cachedPosition = geo;
-      startGeoWatch();
-      setGeoReady(true);
+      const geo = getCachedGeo() ?? (await requestGeoPosition());
 
       const res = await employeeClockAction({
         type,
-        latitude: geo.latitude,
-        longitude: geo.longitude,
-        accuracy: geo.accuracy,
-        gpsTimestamp: geo.timestamp,
+        latitude: geo?.latitude ?? null,
+        longitude: geo?.longitude ?? null,
       });
       if (!res.success) {
         toast.error(res.error ?? "Action impossible");

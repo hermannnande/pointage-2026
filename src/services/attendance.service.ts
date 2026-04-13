@@ -37,16 +37,14 @@ export interface ClockPayload {
   employeeId: string;
   companyId: string;
   type: EventType;
-  latitude?: number;
-  longitude?: number;
-  accuracy?: number;
-  gpsTimestamp?: number;
+  latitude?: number | null;
+  longitude?: number | null;
   source?: EventSource;
   notes?: string;
 }
 
 export async function clockAction(payload: ClockPayload) {
-  const { employeeId, companyId, type, latitude, longitude, accuracy, gpsTimestamp, source = "WEB", notes } = payload;
+  const { employeeId, companyId, type, latitude, longitude, source = "WEB", notes } = payload;
   const now = new Date();
   const today = todayDate();
 
@@ -58,44 +56,11 @@ export async function clockAction(payload: ClockPayload) {
 
   const site = employee.site;
 
-  if (source !== "KIOSK" && (latitude == null || longitude == null)) {
-    throw new Error(
-      "Localisation requise. Activez le GPS sur votre téléphone puis réessayez."
-    );
-  }
-
-  if (source !== "KIOSK" && gpsTimestamp != null) {
-    const gpsAgeMs = now.getTime() - gpsTimestamp;
-    if (gpsAgeMs > 45_000) {
-      throw new Error(
-        "Position GPS obsolète détectée. Rafraîchissez la position puis réessayez."
-      );
-    }
-  }
-
   let isGeofenceOk: boolean | null = null;
   let distToSite: number | null = null;
   if (site && latitude != null && longitude != null && site.latitude != null && site.longitude != null) {
     distToSite = distanceMeters(latitude, longitude, site.latitude, site.longitude);
-    const accuracyMargin = Math.max(0, accuracy ?? 0);
-    const effectiveDistance = Math.max(0, distToSite - accuracyMargin);
-    isGeofenceOk = distToSite <= site.geofenceRadius || effectiveDistance <= site.geofenceRadius;
-
-    // GPS instable : on aide l'employe au lieu d'afficher un faux "hors zone".
-    const maxAcceptedAccuracy = Math.max(site.geofenceRadius * 2, 120);
-    if (source !== "KIOSK" && accuracy != null && accuracy > maxAcceptedAccuracy) {
-      throw new Error(
-        `Signal GPS trop imprécis (±${Math.round(accuracy)}m). Activez la localisation précise, sortez dans un espace dégagé et réessayez.`
-      );
-    }
-
-    if (!isGeofenceOk && source !== "KIOSK") {
-      const distRounded = Math.round(distToSite);
-      const excess = distRounded - site.geofenceRadius;
-      throw new Error(
-        `Vous êtes à ${distRounded}m du site (zone autorisée : ${site.geofenceRadius}m). Rapprochez-vous d'environ ${excess}m vers votre lieu de travail et réessayez.`
-      );
-    }
+    isGeofenceOk = distToSite <= site.geofenceRadius;
   }
 
   let record = await prisma.attendanceRecord.findUnique({
@@ -276,7 +241,6 @@ export async function clockAction(payload: ClockPayload) {
       timestamp: now,
       latitude: latitude ?? null,
       longitude: longitude ?? null,
-      accuracy: accuracy ?? null,
       isGeofenceOk,
       distanceToSite: distToSite != null ? Math.round(distToSite) : null,
       source,

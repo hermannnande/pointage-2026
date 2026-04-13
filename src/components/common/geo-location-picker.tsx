@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
   Loader2,
@@ -28,14 +28,18 @@ interface GeoLocationPickerProps {
 function extractCoordsFromUrl(url: string): GeoCoords | null {
   const cleaned = url.trim();
 
-  const atMatch = cleaned.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+  // 1) Priorite aux coordonnees de destination explicites (liens d'itineraire).
+  const destinationMatch = cleaned.match(/[?&](?:destination|daddr)=(-?\d+\.?\d*)[,+](-?\d+\.?\d*)/i);
+  if (destinationMatch) {
+    return { lat: parseFloat(destinationMatch[1]), lng: parseFloat(destinationMatch[2]) };
+  }
+
+  // 2) Coordonnees du lieu (Google Place share).
+  const bangMatch = cleaned.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+  if (bangMatch) return { lat: parseFloat(bangMatch[1]), lng: parseFloat(bangMatch[2]) };
 
   const qMatch = cleaned.match(/[?&](?:q|ll|center)=(-?\d+\.?\d*)[,+](-?\d+\.?\d*)/);
   if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
-
-  const bangMatch = cleaned.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
-  if (bangMatch) return { lat: parseFloat(bangMatch[1]), lng: parseFloat(bangMatch[2]) };
 
   const yandexMatch = cleaned.match(/[?&]ll=(-?\d+\.?\d*)[,+](-?\d+\.?\d*)/);
   if (yandexMatch) return { lat: parseFloat(yandexMatch[2]), lng: parseFloat(yandexMatch[1]) };
@@ -52,6 +56,10 @@ function extractCoordsFromUrl(url: string): GeoCoords | null {
     const b = parseFloat(rawMatch[2]);
     if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return { lat: a, lng: b };
   }
+
+  // 3) Fallback: centre de carte / viewport (moins fiable pour l'itineraire).
+  const atMatch = cleaned.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
 
   return null;
 }
@@ -115,6 +123,10 @@ export function GeoLocationPicker({ coords, onCoordsChange, onAddressResolved }:
   const [processing, setProcessing] = useState(false);
   const [searchResults, setSearchResults] = useState<Array<{ lat: number; lng: number; display: string }>>([]);
   const [geoLoading, setGeoLoading] = useState(false);
+
+  useEffect(() => {
+    if (coords) setGeoStatus("success");
+  }, [coords]);
 
   const applyCoords = useCallback(
     async (lat: number, lng: number) => {
