@@ -63,6 +63,31 @@ export async function clockAction(payload: ClockPayload) {
     isGeofenceOk = distToSite <= site.geofenceRadius;
   }
 
+  // Sécurité stricte: en mobile/web, l'employé doit pointer dans le périmètre du site.
+  if (source !== "KIOSK") {
+    if (latitude == null || longitude == null) {
+      throw new Error("Localisation requise pour pointer. Activez le GPS puis réessayez.");
+    }
+
+    if (!site || site.latitude == null || site.longitude == null) {
+      throw new Error(
+        "Le site n'a pas de coordonnées GPS configurées. Contactez votre administrateur.",
+      );
+    }
+
+    if (distToSite == null) {
+      throw new Error("Impossible de calculer votre distance au site. Réessayez.");
+    }
+
+    if (distToSite > site.geofenceRadius) {
+      const distanceRounded = Math.round(distToSite);
+      const missingMeters = Math.max(1, Math.round(distToSite - site.geofenceRadius));
+      throw new Error(
+        `Hors périmètre du site: ${distanceRounded}m détectés (rayon autorisé ${site.geofenceRadius}m). Rapprochez-vous d'environ ${missingMeters}m puis réessayez.`,
+      );
+    }
+  }
+
   let record = await prisma.attendanceRecord.findUnique({
     where: { employeeId_date: { employeeId, date: today } },
     include: { breaks: true },
