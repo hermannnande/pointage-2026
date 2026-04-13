@@ -21,6 +21,7 @@ model User {
   lastLoginAt   DateTime? @map("last_login_at")
   isActive      Boolean  @default(true) @map("is_active")
   isSuperAdmin  Boolean  @default(false) @map("is_super_admin")
+  superAdminRole String? @map("super_admin_role")
   locale        String   @default("fr")
   timezone      String   @default("Africa/Abidjan")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -29,6 +30,8 @@ model User {
   memberships   Membership[]
   notifications Notification[]
   auditLogs     AuditLog[] @relation("AuditActor")
+  adminNotes    AdminNote[] @relation("AdminNoteAuthor")
+  superAdminLogs SuperAdminLog[] @relation("SuperAdminLogActor")
 
   @@map("users")
 }
@@ -64,6 +67,8 @@ model Company {
   settings       CompanySetting[]
   imports        Import[]
   auditLogs      AuditLog[]
+  adminNotes     AdminNote[]
+  payrollConfig  PayrollConfig?
 
   @@map("companies")
 }
@@ -205,6 +210,10 @@ model Employee {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
+  baseSalary    Int?         @map("base_salary")
+  salaryType    SalaryType   @default(MONTHLY) @map("salary_type")
+  absencePolicy AbsencePolicy @default(DEDUCT) @map("absence_policy")
+
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   site                Site?                @relation(fields: [siteId], references: [id])
   department          Department?          @relation(fields: [departmentId], references: [id])
@@ -213,9 +222,22 @@ model Employee {
   scheduleAssignments ScheduleAssignment[]
   leaveRequests       LeaveRequest[]
   documents           EmployeeDocument[]
+  payrollEntries      PayrollEntry[]
 
   @@unique([companyId, matricule])
   @@map("employees")
+}
+
+enum SalaryType {
+  MONTHLY
+  DAILY
+  HOURLY
+}
+
+enum AbsencePolicy {
+  DEDUCT
+  PAID
+  TOLERATED
 }
 
 enum ContractType {
@@ -707,4 +729,119 @@ model DeviceSession {
 
   @@index([userId])
   @@map("device_sessions")
+}
+
+// ============================================================
+// PAIE / PAYROLL
+// ============================================================
+
+model PayrollConfig {
+  id                String   @id @default(cuid())
+  companyId         String   @unique @map("company_id")
+  workingDaysPerMonth Int    @default(26) @map("working_days_per_month")
+  workingHoursPerDay Float   @default(8) @map("working_hours_per_day")
+  overtimeRate      Float    @default(1.5) @map("overtime_rate")
+  lateDeductionEnabled Boolean @default(false) @map("late_deduction_enabled")
+  lateThresholdMinutes Int   @default(15) @map("late_threshold_minutes")
+  currency          String   @default("XOF")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("payroll_configs")
+}
+
+model PayrollPeriod {
+  id         String        @id @default(cuid())
+  companyId  String        @map("company_id")
+  label      String
+  startDate  DateTime      @map("start_date") @db.Date
+  endDate    DateTime      @map("end_date") @db.Date
+  status     PayrollStatus @default(DRAFT)
+  closedAt   DateTime?     @map("closed_at")
+  closedById String?       @map("closed_by_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  entries PayrollEntry[]
+
+  @@index([companyId, startDate])
+  @@map("payroll_periods")
+}
+
+enum PayrollStatus {
+  DRAFT
+  CALCULATED
+  VALIDATED
+  CLOSED
+}
+
+model PayrollEntry {
+  id               String   @id @default(cuid())
+  periodId         String   @map("period_id")
+  employeeId       String   @map("employee_id")
+  baseSalary       Int      @map("base_salary")
+  salaryType       SalaryType @map("salary_type")
+  absencePolicy    AbsencePolicy @map("absence_policy")
+  workingDaysExpected Int    @map("working_days_expected")
+  daysPresent      Int      @map("days_present")
+  daysAbsent       Int      @map("days_absent")
+  daysAbsentPaid   Int      @default(0) @map("days_absent_paid")
+  daysAbsentTolerated Int   @default(0) @map("days_absent_tolerated")
+  daysAbsentDeducted Int    @default(0) @map("days_absent_deducted")
+  daysOnLeave      Int      @default(0) @map("days_on_leave")
+  daysLate         Int      @default(0) @map("days_late")
+  totalLateMinutes Int      @default(0) @map("total_late_minutes")
+  overtimeMinutes  Int      @default(0) @map("overtime_minutes")
+  grossSalary      Int      @map("gross_salary")
+  deductions       Int      @default(0)
+  bonuses          Int      @default(0)
+  netSalary        Int      @map("net_salary")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  period   PayrollPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  employee Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, employeeId])
+  @@map("payroll_entries")
+}
+
+// ─── Super Admin ────────────────────────────────────────────
+
+model AdminNote {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  authorId  String   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  author  User    @relation("AdminNoteAuthor", fields: [authorId], references: [id])
+
+  @@index([companyId])
+  @@map("admin_notes")
+}
+
+model SuperAdminLog {
+  id         String   @id @default(cuid())
+  actorId    String   @map("actor_id")
+  action     String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  targetName String?  @map("target_name")
+  oldValue   String?  @map("old_value")
+  newValue   String?  @map("new_value")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  comment    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User @relation("SuperAdminLogActor", fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("super_admin_logs")
 }

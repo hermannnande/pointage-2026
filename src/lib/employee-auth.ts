@@ -25,6 +25,7 @@ export interface EmployeeSessionPayload {
   companyId: string;
   siteId: string;
   siteName: string;
+  siteCode: string;
   firstName: string;
   lastName: string;
   matricule: string;

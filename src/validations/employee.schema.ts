@@ -16,6 +16,9 @@ export const createEmployeeSchema = z.object({
     .min(4, "Le mot de passe doit contenir au moins 4 caractères")
     .max(50)
     .optional(),
+  baseSalary: z.number().int().min(0).optional(),
+  salaryType: z.enum(["MONTHLY", "DAILY", "HOURLY"]).optional(),
+  absencePolicy: z.enum(["DEDUCT", "PAID", "TOLERATED"]).optional(),
 });
 
 export const updateEmployeeSchema = createEmployeeSchema.partial().extend({

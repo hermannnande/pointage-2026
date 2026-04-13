@@ -39,6 +39,8 @@ import {
   getEmployeeTodayAction,
   getEmployeeRecentHistoryAction,
   getEmployeeSiteScheduleAction,
+  getEmployeeSiteCodeAction,
+  checkEmployeeCompanySubscriptionAction,
 } from "./actions";
 import { employeeLogoutAction } from "../employe/actions";
 
@@ -155,6 +157,9 @@ export default function EmployeeSpacePage() {
   const [geoRequesting, setGeoRequesting] = useState(false);
   const [showLocationHelp, setShowLocationHelp] = useState(false);
   const [workEndTime, setWorkEndTime] = useState<string | null>(null);
+  const [subBlocked, setSubBlocked] = useState(false);
+  const [subBlockedMsg, setSubBlockedMsg] = useState("");
+  const [siteCode, setSiteCode] = useState<string | null>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);
@@ -177,6 +182,18 @@ export default function EmployeeSpacePage() {
             return;
           }
           setSession(s);
+
+          const [subCheck, code] = await Promise.all([
+            checkEmployeeCompanySubscriptionAction(),
+            getEmployeeSiteCodeAction(),
+          ]);
+          if (!cancelled) {
+            if (code) setSiteCode(code);
+            if (subCheck && !subCheck.isAccessible) {
+              setSubBlocked(true);
+              setSubBlockedMsg(subCheck.message);
+            }
+          }
         }
       } catch {
         if (!cancelled) router.replace("/employe");
@@ -367,6 +384,30 @@ export default function EmployeeSpacePage() {
 
   if (!session) return null;
 
+  if (subBlocked) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md border-0 shadow-lg">
+          <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <LogOut className="h-8 w-8 text-red-600" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900">Accès suspendu</h2>
+            <p className="text-sm text-slate-500">
+              {subBlockedMsg}
+            </p>
+            <div className="mt-2 rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-800">
+              Le pointage est temporairement indisponible. Votre administrateur doit renouveler l&apos;abonnement pour rétablir l&apos;accès.
+            </div>
+            <Button variant="outline" className="mt-4" onClick={() => void handleLogout()}>
+              Se déconnecter
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const StatusIcon = statusUi.Icon;
 
   return (
@@ -387,6 +428,11 @@ export default function EmployeeSpacePage() {
                 <p className="text-xs text-white/70">
                   {session.siteName} · {session.matricule}
                 </p>
+                {(siteCode || session.siteCode) && (
+                  <p className="mt-0.5 font-mono text-xs font-semibold text-white/90">
+                    Code : {siteCode || session.siteCode}
+                  </p>
+                )}
               </div>
             </div>
             <Button
@@ -405,6 +451,22 @@ export default function EmployeeSpacePage() {
           </div>
         </div>
       </Card>
+
+      {/* Site code banner */}
+      {(siteCode || session.siteCode) && (
+        <div className="flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-sm">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Code du site</p>
+            <p className="font-mono text-xl font-bold tracking-widest text-primary">
+              {siteCode || session.siteCode}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Site</p>
+            <p className="text-sm font-medium">{session.siteName}</p>
+          </div>
+        </div>
+      )}
 
       {/* Clock + Status */}
       <Card className="rounded-2xl border-0 shadow-md">

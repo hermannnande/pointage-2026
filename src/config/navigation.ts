@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Banknote,
   Building2,
   Calendar,
   CalendarDays,
@@ -79,6 +80,12 @@ export const DASHBOARD_NAV: NavSection[] = [
         href: "/dashboard/reports",
         icon: BarChart3,
         permission: "reports.view",
+      },
+      {
+        title: "Paie",
+        href: "/dashboard/payroll",
+        icon: Banknote,
+        permission: "payroll.view",
       },
     ],
   },

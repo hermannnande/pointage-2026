@@ -66,6 +66,17 @@ export async function updateSession(request: NextRequest) {
   const isOnboardingPage = pathname.startsWith("/onboarding");
   const isEmployeeSpace = pathname.startsWith("/espace-employe");
   const isEmployeeLogin = pathname === "/employe";
+  const isSuperAdmin = pathname.startsWith("/super-admin");
+
+  if (isSuperAdmin) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    supabaseResponse.headers.set("x-next-pathname", pathname);
+    return supabaseResponse;
+  }
 
   if (isEmployeeSpace) {
     const sessionCookie = request.cookies.get("oc_employee_session");

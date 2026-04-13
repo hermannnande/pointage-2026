@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Clock, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,22 @@ import { Label } from "@/components/ui/label";
 import { employeeLoginAction } from "./actions";
 
 export default function EmployeeLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-32 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <EmployeeLoginForm />
+    </Suspense>
+  );
+}
+
+function EmployeeLoginForm() {
   const router = useRouter();
-  const [siteCode, setSiteCode] = useState("");
+  const searchParams = useSearchParams();
+  const codeFromUrl = searchParams.get("code") || "";
+  const [siteCode, setSiteCode] = useState(codeFromUrl.toUpperCase());
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);

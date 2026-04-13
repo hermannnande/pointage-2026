@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
+  Copy,
   CrosshairIcon,
   Loader2,
   MapPin,
@@ -224,6 +225,40 @@ export default function EditSitePage() {
   return (
     <>
       <PageHeader title={site.name} />
+
+      {/* Code du site */}
+      {(site as SiteRow & { code?: string | null }).code && (
+        <Card className="mb-6 max-w-3xl border-primary/20 bg-primary/5">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Code du site</p>
+              <p className="mt-1 font-mono text-2xl font-extrabold tracking-[0.3em] text-primary">
+                {(site as SiteRow & { code?: string | null }).code}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Communiquez ce code aux employés pour qu&apos;ils se connectent à leur espace de pointage.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-2"
+              onClick={() => {
+                const code = (site as SiteRow & { code?: string | null }).code;
+                if (code) {
+                  void navigator.clipboard.writeText(code);
+                  toast.success("Code copié !");
+                }
+              }}
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Copier
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="max-w-3xl">
         <CardHeader>
           <CardTitle>Modifier le site</CardTitle>

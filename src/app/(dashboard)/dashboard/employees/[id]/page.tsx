@@ -80,6 +80,9 @@ export default function EditEmployeePage() {
   const [contractType, setContractType] = useState<string>("CDI");
   const [hireDate, setHireDate] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [baseSalary, setBaseSalary] = useState("");
+  const [salaryType, setSalaryType] = useState("MONTHLY");
+  const [absencePolicy, setAbsencePolicy] = useState("DEDUCT");
 
   const [submitting, setSubmitting] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -97,6 +100,9 @@ export default function EditEmployeePage() {
     setContractType(emp.contractType);
     setHireDate(formatDateInput(emp.hireDate));
     setIsActive(emp.isActive);
+    setBaseSalary(emp.baseSalary != null ? String(emp.baseSalary) : "");
+    setSalaryType(emp.salaryType ?? "MONTHLY");
+    setAbsencePolicy(emp.absencePolicy ?? "DEDUCT");
   }, []);
 
   useEffect(() => {
@@ -161,6 +167,9 @@ export default function EditEmployeePage() {
         contractType: contractType as (typeof CONTRACT_OPTIONS)[number]["value"],
         hireDate: hireDate.trim() || undefined,
         isActive,
+        baseSalary: baseSalary ? parseInt(baseSalary) : undefined,
+        salaryType: salaryType as "MONTHLY" | "DAILY" | "HOURLY",
+        absencePolicy: absencePolicy as "DEDUCT" | "PAID" | "TOLERATED",
       });
       if (result.success) {
         toast.success("Employé mis à jour");
@@ -407,6 +416,61 @@ export default function EditEmployeePage() {
                 value={hireDate}
                 onChange={(e) => setHireDate(e.target.value)}
               />
+            </div>
+
+            {/* Paie & Absence */}
+            <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Paie & Gestion des absences
+                <span className="ml-2 text-xs font-normal text-muted-foreground">(optionnel)</span>
+              </p>
+              <p className="mb-3 mt-1 text-xs text-muted-foreground">
+                Définissez le salaire et comment les absences impactent la rémunération.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="baseSalary">Salaire de base (XOF)</Label>
+                  <Input
+                    id="baseSalary"
+                    type="number"
+                    min={0}
+                    placeholder="Ex: 150000"
+                    value={baseSalary}
+                    onChange={(e) => setBaseSalary(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Type de salaire</Label>
+                  <Select value={salaryType} onValueChange={setSalaryType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MONTHLY">Mensuel</SelectItem>
+                      <SelectItem value="DAILY">Journalier</SelectItem>
+                      <SelectItem value="HOURLY">Horaire</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Politique d&apos;absence</Label>
+                  <Select value={absencePolicy} onValueChange={setAbsencePolicy}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DEDUCT">Déduite du salaire</SelectItem>
+                      <SelectItem value="PAID">Absence payée</SelectItem>
+                      <SelectItem value="TOLERATED">Absence tolérée</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {absencePolicy === "DEDUCT" && "Chaque jour d'absence réduit le salaire"}
+                    {absencePolicy === "PAID" && "L'employé est payé même en cas d'absence"}
+                    {absencePolicy === "TOLERATED" && "Les absences n'impactent pas le salaire"}
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t bg-transparent">

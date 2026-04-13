@@ -32,7 +32,7 @@ export async function getSitesAction() {
 
 export async function createSiteAction(
   input: CreateSiteInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; code: string | null }>> {
   try {
     const ctx = await getContext();
     requirePermission(ctx, PERMISSIONS.SITES_CREATE);
@@ -44,7 +44,7 @@ export async function createSiteAction(
 
     const site = await siteService.createSite(ctx.companyId, parsed.data);
     revalidatePath("/dashboard/sites");
-    return { success: true, data: { id: site.id } };
+    return { success: true, data: { id: site.id, code: site.code } };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erreur" };
   }

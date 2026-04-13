@@ -62,6 +62,9 @@ export default function NewEmployeePage() {
   const [hireDate, setHireDate] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [baseSalary, setBaseSalary] = useState("");
+  const [salaryType, setSalaryType] = useState("MONTHLY");
+  const [absencePolicy, setAbsencePolicy] = useState("DEDUCT");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<CreatedCredentials | null>(null);
@@ -73,7 +76,12 @@ export default function NewEmployeePage() {
       setSitesLoading(true);
       try {
         const data = await getSitesForSelectAction();
-        if (!cancelled) setSites(data);
+        if (!cancelled) {
+          setSites(data);
+          if (data.length === 1) {
+            setSiteId(data[0].id);
+          }
+        }
       } catch {
         if (!cancelled) {
           toast.error("Impossible de charger les sites");
@@ -91,6 +99,13 @@ export default function NewEmployeePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (siteId === EMPTY_SITE || !siteId) {
+      setError("Veuillez sélectionner un site. L'employé a besoin d'un code de site pour se connecter.");
+      toast.error("Un site est obligatoire pour créer un employé");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const result = await createEmployeeAction({
@@ -100,11 +115,13 @@ export default function NewEmployeePage() {
         phone: phone.trim() || undefined,
         matricule: undefined,
         position: position.trim() || undefined,
-        siteId:
-          siteId === EMPTY_SITE || !siteId ? undefined : siteId,
+        siteId,
         contractType: contractType as (typeof CONTRACT_OPTIONS)[number]["value"],
         hireDate: hireDate.trim() || undefined,
         password: password.trim() || undefined,
+        baseSalary: baseSalary ? parseInt(baseSalary) : undefined,
+        salaryType: salaryType as "MONTHLY" | "DAILY" | "HOURLY",
+        absencePolicy: absencePolicy as "DEDUCT" | "PAID" | "TOLERATED",
       });
       if (result.success && result.data) {
         toast.success("Employé créé avec succès");
@@ -136,7 +153,9 @@ export default function NewEmployeePage() {
       `Matricule : ${credentials.matricule}`,
       credentials.password ? `Mot de passe : ${credentials.password}` : "",
       ``,
-      `Page de connexion : ${window.location.origin}/employe`,
+      credentials.siteCode
+        ? `Page de connexion : ${window.location.origin}/employe?code=${credentials.siteCode}`
+        : `Page de connexion : ${window.location.origin}/employe`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -208,8 +227,9 @@ export default function NewEmployeePage() {
                   <span className="text-xs font-medium uppercase text-muted-foreground">
                     Page de connexion
                   </span>
-                  <p className="text-sm font-medium text-primary">
+                  <p className="text-sm font-medium text-primary break-all">
                     {typeof window !== "undefined" ? window.location.origin : ""}/employe
+                    {credentials.siteCode ? `?code=${credentials.siteCode}` : ""}
                   </p>
                 </div>
               </div>
@@ -327,11 +347,13 @@ export default function NewEmployeePage() {
                   onValueChange={(v) => setSiteId(v || EMPTY_SITE)}
                   disabled={sitesLoading}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className={`w-full ${siteId === EMPTY_SITE ? "border-destructive" : ""}`}>
                     <SelectValue placeholder="Choisir un site" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={EMPTY_SITE}>Non assigné</SelectItem>
+                    <SelectItem value={EMPTY_SITE} disabled>
+                      — Sélectionnez un site —
+                    </SelectItem>
                     {sites.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name} {s.code ? `(${s.code})` : ""}
@@ -340,7 +362,7 @@ export default function NewEmployeePage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  L&apos;employé utilisera le code du site pour se connecter.
+                  Obligatoire — L&apos;employé utilisera le code du site pour se connecter.
                 </p>
               </div>
               <div className="grid gap-2">
@@ -371,6 +393,61 @@ export default function NewEmployeePage() {
                 value={hireDate}
                 onChange={(e) => setHireDate(e.target.value)}
               />
+            </div>
+
+            {/* Paie & Absence (optionnel) */}
+            <div className="rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Paie & Gestion des absences
+                <span className="ml-2 text-xs font-normal text-muted-foreground">(optionnel)</span>
+              </p>
+              <p className="mb-3 mt-1 text-xs text-muted-foreground">
+                Configurez le salaire pour inclure cet employé dans le calcul de la paie.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="baseSalary">Salaire de base (XOF)</Label>
+                  <Input
+                    id="baseSalary"
+                    type="number"
+                    min={0}
+                    placeholder="Ex: 150000"
+                    value={baseSalary}
+                    onChange={(e) => setBaseSalary(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Type de salaire</Label>
+                  <Select value={salaryType} onValueChange={setSalaryType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MONTHLY">Mensuel</SelectItem>
+                      <SelectItem value="DAILY">Journalier</SelectItem>
+                      <SelectItem value="HOURLY">Horaire</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Politique d&apos;absence</Label>
+                  <Select value={absencePolicy} onValueChange={setAbsencePolicy}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DEDUCT">Déduite du salaire</SelectItem>
+                      <SelectItem value="PAID">Absence payée</SelectItem>
+                      <SelectItem value="TOLERATED">Absence tolérée</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {absencePolicy === "DEDUCT" && "Chaque jour d'absence réduit le salaire"}
+                    {absencePolicy === "PAID" && "L'employé est payé même en cas d'absence"}
+                    {absencePolicy === "TOLERATED" && "Les absences n'impactent pas le salaire"}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Mot de passe employe */}

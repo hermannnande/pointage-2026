@@ -62,6 +62,7 @@ export async function employeeLoginAction(input: LoginInput): Promise<LoginResul
       companyId: site.companyId,
       siteId: site.id,
       siteName: site.name,
+      siteCode: siteCode.toUpperCase().trim(),
       firstName: employee.firstName,
       lastName: employee.lastName,
       matricule: employee.matricule || "",

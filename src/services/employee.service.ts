@@ -1,4 +1,4 @@
-import type { ContractType } from "@prisma/client";
+import type { AbsencePolicy, ContractType, SalaryType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma/client";
 import { hashPassword } from "@/lib/employee-auth";
@@ -90,6 +90,9 @@ export async function createEmployee(companyId: string, data: CreateEmployeeInpu
       contractType: data.contractType as ContractType,
       hireDate: data.hireDate ? new Date(data.hireDate) : null,
       passwordHash,
+      baseSalary: data.baseSalary ?? null,
+      salaryType: (data.salaryType as SalaryType) ?? "MONTHLY",
+      absencePolicy: (data.absencePolicy as AbsencePolicy) ?? "DEDUCT",
     },
   });
 }
@@ -110,6 +113,9 @@ export async function updateEmployee(companyId: string, data: UpdateEmployeeInpu
   if (rest.isActive !== undefined) updateData.isActive = rest.isActive;
   if (rest.hireDate !== undefined) updateData.hireDate = rest.hireDate ? new Date(rest.hireDate) : null;
   if (rest.password) updateData.passwordHash = hashPassword(rest.password);
+  if (rest.baseSalary !== undefined) updateData.baseSalary = rest.baseSalary ?? null;
+  if (rest.salaryType !== undefined) updateData.salaryType = rest.salaryType;
+  if (rest.absencePolicy !== undefined) updateData.absencePolicy = rest.absencePolicy;
 
   return prisma.employee.update({ where: { id }, data: updateData });
 }

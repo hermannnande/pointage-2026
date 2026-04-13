@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  Copy,
   CrosshairIcon,
   Loader2,
   MapPin,
@@ -54,6 +55,8 @@ export default function NewSitePage() {
   const [graceMinutes, setGraceMinutes] = useState(15);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [createdName, setCreatedName] = useState<string>("");
 
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -110,7 +113,12 @@ export default function NewSitePage() {
       });
       if (result.success) {
         toast.success("Site créé avec succès");
-        router.push("/dashboard/sites");
+        if (result.data?.code) {
+          setCreatedCode(result.data.code);
+          setCreatedName(name.trim());
+        } else {
+          router.push("/dashboard/sites");
+        }
       } else {
         setError(result.error ?? "Une erreur est survenue");
       }
@@ -122,6 +130,47 @@ export default function NewSitePage() {
   return (
     <>
       <PageHeader title="Nouveau site" />
+
+      {createdCode ? (
+        <Card className="max-w-lg border-0 shadow-lg">
+          <CardContent className="flex flex-col items-center gap-5 p-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+              <CheckCircle2 className="h-8 w-8 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Site créé avec succès !</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Le site <span className="font-semibold">{createdName}</span> a été créé.
+              </p>
+            </div>
+            <div className="w-full rounded-xl border-2 border-primary/30 bg-primary/5 p-5">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Code du site</p>
+              <p className="mt-2 font-mono text-3xl font-extrabold tracking-[0.3em] text-primary">
+                {createdCode}
+              </p>
+              <p className="mt-2 text-xs text-slate-500">
+                Les employés utiliseront ce code pour se connecter à leur espace de pointage.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 gap-2"
+                onClick={() => {
+                  void navigator.clipboard.writeText(createdCode);
+                  toast.success("Code copié !");
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copier le code
+              </Button>
+            </div>
+            <Button className="mt-2 w-full" onClick={() => router.push("/dashboard/sites")}>
+              Voir tous les sites
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
       <Card className="max-w-3xl">
         <CardHeader>
           <CardTitle>Informations du site</CardTitle>
@@ -349,6 +398,7 @@ export default function NewSitePage() {
           </CardFooter>
         </form>
       </Card>
+      )}
     </>
   );
 }

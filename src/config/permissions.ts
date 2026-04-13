@@ -28,6 +28,9 @@ export const PERMISSIONS = {
   BILLING_VIEW: "billing.view",
   BILLING_MANAGE: "billing.manage",
 
+  PAYROLL_VIEW: "payroll.view",
+  PAYROLL_MANAGE: "payroll.manage",
+
   SETTINGS_VIEW: "settings.view",
   SETTINGS_MANAGE: "settings.manage",
 
@@ -71,6 +74,9 @@ export const ALL_PERMISSIONS: {
   { slug: PERMISSIONS.BILLING_VIEW, name: "Voir la facturation", category: "billing", description: "Consulter l'abonnement" },
   { slug: PERMISSIONS.BILLING_MANAGE, name: "Gérer la facturation", category: "billing", description: "Modifier l'abonnement et payer" },
 
+  { slug: PERMISSIONS.PAYROLL_VIEW, name: "Voir la paie", category: "payroll", description: "Consulter les fiches de paie" },
+  { slug: PERMISSIONS.PAYROLL_MANAGE, name: "Gérer la paie", category: "payroll", description: "Calculer et valider les fiches de paie" },
+
   { slug: PERMISSIONS.SETTINGS_VIEW, name: "Voir les paramètres", category: "settings", description: "Consulter les paramètres" },
   { slug: PERMISSIONS.SETTINGS_MANAGE, name: "Gérer les paramètres", category: "settings", description: "Modifier les paramètres" },
 
@@ -113,6 +119,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMISSIONS.LEAVES_APPROVE,
     PERMISSIONS.REPORTS_VIEW,
     PERMISSIONS.REPORTS_EXPORT,
+    PERMISSIONS.PAYROLL_VIEW,
+    PERMISSIONS.PAYROLL_MANAGE,
   ],
   employee: [
     PERMISSIONS.ATTENDANCE_VIEW,
