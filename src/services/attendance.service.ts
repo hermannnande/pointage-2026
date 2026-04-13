@@ -67,7 +67,17 @@ export async function clockAction(payload: ClockPayload) {
   let distToSite: number | null = null;
   if (site && latitude != null && longitude != null && site.latitude != null && site.longitude != null) {
     distToSite = distanceMeters(latitude, longitude, site.latitude, site.longitude);
-    isGeofenceOk = distToSite <= site.geofenceRadius;
+    const accuracyMargin = Math.max(0, accuracy ?? 0);
+    const effectiveDistance = Math.max(0, distToSite - accuracyMargin);
+    isGeofenceOk = distToSite <= site.geofenceRadius || effectiveDistance <= site.geofenceRadius;
+
+    // GPS instable : on aide l'employe au lieu d'afficher un faux "hors zone".
+    const maxAcceptedAccuracy = Math.max(site.geofenceRadius * 2, 120);
+    if (source !== "KIOSK" && accuracy != null && accuracy > maxAcceptedAccuracy) {
+      throw new Error(
+        `Signal GPS trop imprécis (±${Math.round(accuracy)}m). Activez la localisation précise, sortez dans un espace dégagé et réessayez.`
+      );
+    }
 
     if (!isGeofenceOk && source !== "KIOSK") {
       const distRounded = Math.round(distToSite);
