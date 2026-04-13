@@ -370,7 +370,7 @@ export function GeoLocationPicker({
       {/* Sélection de position */}
       {geoStatus !== "success" && (
         <div className="space-y-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-4">
-          {/* Bouton localisation automatique — PRIORITAIRE */}
+          {/* 1. Bouton localisation automatique */}
           <Button
             type="button"
             variant="default"
@@ -388,88 +388,79 @@ export function GeoLocationPicker({
               : "Me localiser automatiquement (Google Maps)"}
           </Button>
 
-          <p className="text-center text-[11px] text-muted-foreground">
-            Méthode recommandée : utilise le GPS de votre appareil + Google Maps
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">ou rechercher avec Google Maps</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* 2. Barre de recherche — adresse, lien Google Maps, coordonnées */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Adresse, lien Google Maps, ou coordonnées GPS..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && (e.preventDefault(), void handleSubmit())
+                }
+              />
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="shrink-0"
+              disabled={processing || liveSearchLoading || !input.trim()}
+              onClick={() => void handleSubmit()}
+            >
+              {processing || liveSearchLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "OK"
+              )}
+            </Button>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            Accepte : adresse, lien Google Maps, ou coordonnées GPS (ex: 5.336, -3.963)
           </p>
 
-          {/* Saisie manuelle — UNIQUEMENT si auto échoue */}
-          {autoFailed && (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs font-medium text-amber-600">
-                  Localisation auto impossible — saisie manuelle
-                </span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-9"
-                    placeholder="Adresse, lien Google Maps, ou coordonnées GPS..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && (e.preventDefault(), void handleSubmit())
-                    }
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  className="shrink-0"
-                  disabled={processing || liveSearchLoading || !input.trim()}
-                  onClick={() => void handleSubmit()}
-                >
-                  {processing || liveSearchLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "OK"
-                  )}
-                </Button>
-              </div>
-
+          {!looksLikeUrl(input.trim()) &&
+            !looksLikeCoords(input.trim()) &&
+            input.trim().length >= 2 && (
               <p className="text-[11px] text-muted-foreground">
-                Recherche Google Maps. Accepte : adresse, lien Maps, ou coordonnées GPS.
+                {liveSearchLoading
+                  ? "Recherche Google Maps en temps réel..."
+                  : searchResults.length > 0
+                    ? `${searchResults.length} résultat(s) Google Maps`
+                    : "Aucun résultat Google Maps pour le moment."}
               </p>
+            )}
 
-              {!looksLikeUrl(input.trim()) &&
-                !looksLikeCoords(input.trim()) &&
-                input.trim().length >= 2 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {liveSearchLoading
-                      ? "Recherche Google Maps en temps réel..."
-                      : searchResults.length > 0
-                        ? `${searchResults.length} résultat(s) Google Maps`
-                        : "Aucun résultat Google Maps pour le moment."}
-                  </p>
-                )}
-
-              {searchResults.length > 0 && (
-                <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border bg-background p-1">
-                  <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                    Sélectionnez le bon emplacement :
-                  </p>
-                  {searchResults.map((r, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors hover:bg-primary/5"
-                      onClick={() => {
-                        void applyCoords(r.lat, r.lng);
-                        toast.success("Position Google Maps définie !");
-                      }}
-                    >
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span className="text-xs">{r.display}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
+          {/* Résultats de recherche */}
+          {searchResults.length > 0 && (
+            <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border bg-background p-1">
+              <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                Sélectionnez le bon emplacement :
+              </p>
+              {searchResults.map((r, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors hover:bg-primary/5"
+                  onClick={() => {
+                    void applyCoords(r.lat, r.lng);
+                    toast.success("Position Google Maps définie !");
+                  }}
+                >
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="text-xs">{r.display}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )}
