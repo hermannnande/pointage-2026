@@ -118,7 +118,7 @@ export default function NewEmployeePage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
+        phone: phone.trim(),
         matricule: undefined,
         position: position.trim() || undefined,
         siteId,
