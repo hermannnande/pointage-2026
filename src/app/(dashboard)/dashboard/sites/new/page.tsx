@@ -1,15 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
-  Copy,
   CrosshairIcon,
   Loader2,
   MapPin,
-  Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { GeoLocationPicker } from "@/components/common/geo-location-picker";
 import { createSiteAction } from "../actions";
 
 const RADIUS_OPTIONS = [
@@ -41,8 +40,6 @@ const RADIUS_OPTIONS = [
   { value: 500, label: "500 m — Grand site / campus" },
   { value: 1000, label: "1 km — Zone industrielle" },
 ];
-
-type GeoStatus = "idle" | "loading" | "success" | "error" | "denied";
 
 export default function NewSitePage() {
   const router = useRouter();
@@ -58,42 +55,7 @@ export default function NewSitePage() {
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [createdName, setCreatedName] = useState<string>("");
 
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-
-  const requestGeolocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGeoStatus("error");
-      return;
-    }
-    setGeoStatus("loading");
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        setCoords({ lat, lng });
-        setGeoStatus("success");
-        try {
-          const resp = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fr`,
-          );
-          if (resp.ok) {
-            const data = await resp.json();
-            const addr = data.display_name;
-            if (addr && !address) {
-              setAddress(addr.split(",").slice(0, 3).join(",").trim());
-            }
-          }
-        } catch {
-          // Non-bloquant
-        }
-      },
-      (err) => {
-        setGeoStatus(err.code === 1 ? "denied" : "error");
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
-  }, [address]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -184,91 +146,11 @@ export default function NewSitePage() {
             </div>
 
             {/* Géolocalisation */}
-            <div className="space-y-3">
-              <Label>
-                <Navigation className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-                Position GPS du site
-              </Label>
-
-              {geoStatus === "idle" && (
-                <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-5 text-center">
-                  <CrosshairIcon className="mx-auto h-8 w-8 text-primary/60" />
-                  <p className="mt-2 text-sm font-medium">
-                    Localisez votre site automatiquement
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Placez-vous sur le lieu de travail et cliquez ci-dessous
-                  </p>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    className="mt-3 gap-2"
-                    onClick={requestGeolocation}
-                  >
-                    <Navigation className="h-4 w-4" />
-                    Me localiser maintenant
-                  </Button>
-                </div>
-              )}
-
-              {geoStatus === "loading" && (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-                  <p className="mt-2 text-sm font-medium">Localisation en cours...</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Autorisez l&apos;accès à votre position
-                  </p>
-                </div>
-              )}
-
-              {geoStatus === "success" && coords && (
-                <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/40">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                        Position enregistrée
-                      </p>
-                      <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
-                        {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0 text-xs text-green-700 hover:text-green-800 dark:text-green-300"
-                      onClick={requestGeolocation}
-                    >
-                      Actualiser
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {(geoStatus === "denied" || geoStatus === "error") && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                    {geoStatus === "denied" ? "Accès à la position refusé" : "Impossible de vous localiser"}
-                  </p>
-                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                    Saisissez l&apos;adresse manuellement ci-dessous.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => setGeoStatus("idle")}
-                  >
-                    Réessayer
-                  </Button>
-                </div>
-              )}
-            </div>
+            <GeoLocationPicker
+              coords={coords}
+              onCoordsChange={setCoords}
+              onAddressResolved={(addr) => { if (!address) setAddress(addr); }}
+            />
 
             {/* Rayon de couverture */}
             <div className="grid gap-2">

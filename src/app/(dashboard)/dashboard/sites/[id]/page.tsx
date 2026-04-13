@@ -5,12 +5,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  CheckCircle2,
-  Copy,
   CrosshairIcon,
   Loader2,
   MapPin,
-  Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { GeoLocationPicker } from "@/components/common/geo-location-picker";
 import { getSitesAction, updateSiteAction } from "../actions";
 
 const RADIUS_OPTIONS = [
@@ -45,7 +43,6 @@ const RADIUS_OPTIONS = [
 ];
 
 type SiteRow = Awaited<ReturnType<typeof getSitesAction>>[number];
-type GeoStatus = "idle" | "loading" | "success" | "error" | "denied";
 
 export default function EditSitePage() {
   const params = useParams();
@@ -66,7 +63,6 @@ export default function EditSitePage() {
   const [isActive, setIsActive] = useState(true);
   const [clockInEnabled, setClockInEnabled] = useState(true);
 
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -84,7 +80,6 @@ export default function EditSitePage() {
     setClockInEnabled(s.clockInEnabled);
     if (s.latitude != null && s.longitude != null) {
       setCoords({ lat: Number(s.latitude), lng: Number(s.longitude) });
-      setGeoStatus("success");
     }
   }, []);
 
@@ -124,40 +119,6 @@ export default function EditSitePage() {
       cancelled = true;
     };
   }, [id, hydrateFromSite]);
-
-  const requestGeolocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGeoStatus("error");
-      return;
-    }
-    setGeoStatus("loading");
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        setCoords({ lat, lng });
-        setGeoStatus("success");
-        try {
-          const resp = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fr`,
-          );
-          if (resp.ok) {
-            const data = await resp.json();
-            const addr = data.display_name;
-            if (addr && !address) {
-              setAddress(addr.split(",").slice(0, 3).join(",").trim());
-            }
-          }
-        } catch {
-          // Non-bloquant
-        }
-      },
-      (err) => {
-        setGeoStatus(err.code === 1 ? "denied" : "error");
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
-  }, [address]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -226,39 +187,6 @@ export default function EditSitePage() {
     <>
       <PageHeader title={site.name} />
 
-      {/* Code du site */}
-      {(site as SiteRow & { code?: string | null }).code && (
-        <Card className="mb-6 max-w-3xl border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Code du site</p>
-              <p className="mt-1 font-mono text-2xl font-extrabold tracking-[0.3em] text-primary">
-                {(site as SiteRow & { code?: string | null }).code}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Communiquez ce code aux employés pour qu&apos;ils se connectent à leur espace de pointage.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-2"
-              onClick={() => {
-                const code = (site as SiteRow & { code?: string | null }).code;
-                if (code) {
-                  void navigator.clipboard.writeText(code);
-                  toast.success("Code copié !");
-                }
-              }}
-            >
-              <Copy className="h-3.5 w-3.5" />
-              Copier
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="max-w-3xl">
         <CardHeader>
           <CardTitle>Modifier le site</CardTitle>
@@ -288,91 +216,11 @@ export default function EditSitePage() {
             </div>
 
             {/* Géolocalisation */}
-            <div className="space-y-3">
-              <Label>
-                <Navigation className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-                Position GPS du site
-              </Label>
-
-              {geoStatus === "idle" && (
-                <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-5 text-center">
-                  <CrosshairIcon className="mx-auto h-8 w-8 text-primary/60" />
-                  <p className="mt-2 text-sm font-medium">
-                    Aucune position enregistrée
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Placez-vous sur le lieu de travail et cliquez ci-dessous
-                  </p>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    className="mt-3 gap-2"
-                    onClick={requestGeolocation}
-                  >
-                    <Navigation className="h-4 w-4" />
-                    Me localiser maintenant
-                  </Button>
-                </div>
-              )}
-
-              {geoStatus === "loading" && (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-                  <p className="mt-2 text-sm font-medium">Localisation en cours...</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Autorisez l&apos;accès à votre position
-                  </p>
-                </div>
-              )}
-
-              {geoStatus === "success" && coords && (
-                <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/40">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                        Position enregistrée
-                      </p>
-                      <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
-                        {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0 text-xs text-green-700 hover:text-green-800 dark:text-green-300"
-                      onClick={requestGeolocation}
-                    >
-                      Actualiser
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {(geoStatus === "denied" || geoStatus === "error") && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                    {geoStatus === "denied" ? "Accès à la position refusé" : "Impossible de vous localiser"}
-                  </p>
-                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                    Saisissez l&apos;adresse manuellement ci-dessous.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => setGeoStatus("idle")}
-                  >
-                    Réessayer
-                  </Button>
-                </div>
-              )}
-            </div>
+            <GeoLocationPicker
+              coords={coords}
+              onCoordsChange={setCoords}
+              onAddressResolved={(addr) => { if (!address) setAddress(addr); }}
+            />
 
             {/* Rayon de couverture */}
             <div className="grid gap-2">
