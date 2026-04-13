@@ -42,7 +42,7 @@ type SiteOption = Awaited<ReturnType<typeof getSitesForSelectAction>>[number];
 
 interface CreatedCredentials {
   matricule: string;
-  siteCode: string | null;
+  phone: string;
   password: string;
   siteName: string;
   employeeName: string;
@@ -101,8 +101,14 @@ export default function NewEmployeePage() {
     setError(null);
 
     if (siteId === EMPTY_SITE || !siteId) {
-      setError("Veuillez sélectionner un site. L'employé a besoin d'un code de site pour se connecter.");
+      setError("Veuillez sélectionner un site.");
       toast.error("Un site est obligatoire pour créer un employé");
+      return;
+    }
+
+    if (!phone.trim() || phone.trim().length < 8) {
+      setError("Le numéro de téléphone est obligatoire (minimum 8 chiffres). Il servira à l'employé pour se connecter.");
+      toast.error("Numéro de téléphone obligatoire");
       return;
     }
 
@@ -130,7 +136,7 @@ export default function NewEmployeePage() {
 
         setCredentials({
           matricule: result.data.matricule,
-          siteCode: result.data.siteCode,
+          phone: phone.trim(),
           password: password.trim(),
           siteName: selectedSite?.name || "",
           employeeName: `${firstName.trim()} ${lastName.trim()}`,
@@ -149,13 +155,11 @@ export default function NewEmployeePage() {
     const text = [
       `=== Identifiants de connexion ===`,
       `Employé : ${credentials.employeeName}`,
-      credentials.siteCode ? `Code du site : ${credentials.siteCode}` : "",
+      `Téléphone : ${credentials.phone}`,
       `Matricule : ${credentials.matricule}`,
       credentials.password ? `Mot de passe : ${credentials.password}` : "",
       ``,
-      credentials.siteCode
-        ? `Page de connexion : ${window.location.origin}/employe?code=${credentials.siteCode}`
-        : `Page de connexion : ${window.location.origin}/employe`,
+      `Page de connexion : ${window.location.origin}/employe`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -192,16 +196,14 @@ export default function NewEmployeePage() {
                   <p className="text-lg font-semibold">{credentials.employeeName}</p>
                 </div>
 
-                {credentials.siteCode && (
-                  <div>
-                    <span className="text-xs font-medium uppercase text-muted-foreground">
-                      Code du site
-                    </span>
-                    <p className="font-mono text-2xl font-bold tracking-wider text-primary">
-                      {credentials.siteCode}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                    Téléphone (identifiant de connexion)
+                  </span>
+                  <p className="font-mono text-2xl font-bold tracking-wider text-primary">
+                    {credentials.phone}
+                  </p>
+                </div>
 
                 <div>
                   <span className="text-xs font-medium uppercase text-muted-foreground">
@@ -229,7 +231,6 @@ export default function NewEmployeePage() {
                   </span>
                   <p className="text-sm font-medium text-primary break-all">
                     {typeof window !== "undefined" ? window.location.origin : ""}/employe
-                    {credentials.siteCode ? `?code=${credentials.siteCode}` : ""}
                   </p>
                 </div>
               </div>
@@ -315,12 +316,15 @@ export default function NewEmployeePage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="phone">Téléphone</Label>
+                <Label htmlFor="phone">Téléphone *</Label>
                 <Input
                   id="phone"
                   name="phone"
+                  type="tel"
+                  required
+                  minLength={8}
                   maxLength={30}
-                  placeholder="optionnel"
+                  placeholder="Ex: 0778030075"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />

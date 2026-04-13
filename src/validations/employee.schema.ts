@@ -4,7 +4,7 @@ export const createEmployeeSchema = z.object({
   firstName: z.string().min(1, "Prénom requis").max(100),
   lastName: z.string().min(1, "Nom requis").max(100),
   email: z.email("Email invalide").optional().or(z.literal("")),
-  phone: z.string().max(30).optional(),
+  phone: z.string().min(8, "Numéro de téléphone requis (min 8 chiffres)").max(30),
   matricule: z.string().max(50).optional(),
   position: z.string().max(100).optional(),
   siteId: z.string().optional(),

@@ -225,6 +225,7 @@ model Employee {
   payrollEntries      PayrollEntry[]
 
   @@unique([companyId, matricule])
+  @@index([phone])
   @@map("employees")
 }
 

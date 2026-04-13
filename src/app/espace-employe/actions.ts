@@ -70,19 +70,6 @@ export async function getEmployeeTodayAction() {
   return attendanceService.getEmployeeTodayRecord(session.companyId, session.employeeId);
 }
 
-export async function getEmployeeSiteCodeAction(): Promise<string | null> {
-  const session = await getEmployeeSession();
-  if (!session) return null;
-
-  if (session.siteCode) return session.siteCode;
-
-  const site = await prisma.site.findFirst({
-    where: { id: session.siteId },
-    select: { code: true },
-  });
-  return site?.code ?? null;
-}
-
 export async function getEmployeeSiteScheduleAction(): Promise<{ workEndTime: string | null } | null> {
   const session = await getEmployeeSession();
   if (!session) return null;

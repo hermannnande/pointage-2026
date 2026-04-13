@@ -67,7 +67,31 @@ export async function getEmployeeById(companyId: string, employeeId: string) {
   });
 }
 
+export async function checkPhoneAvailability(phone: string, excludeEmployeeId?: string) {
+  const normalizedPhone = phone.trim().replace(/\s+/g, "");
+  const existing = await prisma.employee.findFirst({
+    where: {
+      phone: normalizedPhone,
+      isActive: true,
+      id: excludeEmployeeId ? { not: excludeEmployeeId } : undefined,
+    },
+    include: {
+      company: { select: { name: true } },
+    },
+  });
+  return existing;
+}
+
 export async function createEmployee(companyId: string, data: CreateEmployeeInput) {
+  const normalizedPhone = data.phone.trim().replace(/\s+/g, "");
+
+  const existing = await checkPhoneAvailability(normalizedPhone);
+  if (existing) {
+    throw new Error(
+      `Ce numéro de téléphone est déjà utilisé par un employé actif dans l'entreprise "${existing.company.name}". L'employé doit d'abord être supprimé de son ancienne entreprise avant de pouvoir être ajouté ici.`
+    );
+  }
+
   let matricule = data.matricule || null;
   if (!matricule) {
     const count = await prisma.employee.count({ where: { companyId } });
@@ -82,7 +106,7 @@ export async function createEmployee(companyId: string, data: CreateEmployeeInpu
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email || null,
-      phone: data.phone || null,
+      phone: normalizedPhone,
       matricule,
       position: data.position || null,
       siteId: data.siteId || null,
@@ -101,10 +125,22 @@ export async function updateEmployee(companyId: string, data: UpdateEmployeeInpu
   const { id, ...rest } = data;
   const updateData: Record<string, unknown> = {};
 
+  if (rest.phone !== undefined && rest.phone) {
+    const normalizedPhone = rest.phone.trim().replace(/\s+/g, "");
+    const existing = await checkPhoneAvailability(normalizedPhone, id);
+    if (existing) {
+      throw new Error(
+        `Ce numéro de téléphone est déjà utilisé par un employé actif dans l'entreprise "${existing.company.name}". L'employé doit d'abord être supprimé de son ancienne entreprise.`
+      );
+    }
+    updateData.phone = normalizedPhone;
+  } else if (rest.phone !== undefined) {
+    updateData.phone = rest.phone || null;
+  }
+
   if (rest.firstName !== undefined) updateData.firstName = rest.firstName;
   if (rest.lastName !== undefined) updateData.lastName = rest.lastName;
   if (rest.email !== undefined) updateData.email = rest.email || null;
-  if (rest.phone !== undefined) updateData.phone = rest.phone || null;
   if (rest.matricule !== undefined) updateData.matricule = rest.matricule || null;
   if (rest.position !== undefined) updateData.position = rest.position || null;
   if (rest.siteId !== undefined) updateData.siteId = rest.siteId || null;

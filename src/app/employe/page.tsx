@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Clock, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Clock, Eye, EyeOff, Loader2, LogIn, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -13,22 +13,8 @@ import { Label } from "@/components/ui/label";
 import { employeeLoginAction } from "./actions";
 
 export default function EmployeeLoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex h-32 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    }>
-      <EmployeeLoginForm />
-    </Suspense>
-  );
-}
-
-function EmployeeLoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const codeFromUrl = searchParams.get("code") || "";
-  const [siteCode, setSiteCode] = useState(codeFromUrl.toUpperCase());
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,7 +26,7 @@ function EmployeeLoginForm() {
     setError(null);
 
     const result = await employeeLoginAction({
-      siteCode: siteCode.trim(),
+      phone: phone.trim(),
       password: password,
     });
 
@@ -54,7 +40,6 @@ function EmployeeLoginForm() {
 
   return (
     <div className="w-full max-w-md space-y-6">
-      {/* Logo */}
       <div className="flex flex-col items-center gap-3">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg">
           <Clock className="h-7 w-7 text-primary-foreground" />
@@ -72,7 +57,7 @@ function EmployeeLoginForm() {
           <div className="text-center">
             <h2 className="text-lg font-semibold">Connexion employé</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Entrez les informations données par votre responsable
+              Entrez votre numéro de téléphone et votre mot de passe
             </p>
           </div>
 
@@ -84,20 +69,24 @@ function EmployeeLoginForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="siteCode">Code du site</Label>
-              <Input
-                id="siteCode"
-                value={siteCode}
-                onChange={(e) => setSiteCode(e.target.value.toUpperCase())}
-                placeholder="Ex : A7K2M9"
-                required
-                disabled={loading}
-                maxLength={10}
-                className="text-center font-mono text-lg tracking-widest"
-                autoComplete="off"
-              />
+              <Label htmlFor="phone">Numéro de téléphone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Ex : 0778030075"
+                  required
+                  disabled={loading}
+                  maxLength={20}
+                  className="pl-10 text-lg"
+                  autoComplete="tel"
+                />
+              </div>
               <p className="text-xs text-muted-foreground">
-                Le code à 6 caractères donné par votre responsable
+                Le numéro enregistré par votre responsable
               </p>
             </div>
 

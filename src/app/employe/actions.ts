@@ -10,7 +10,7 @@ import {
 } from "@/lib/employee-auth";
 
 interface LoginInput {
-  siteCode: string;
+  phone: string;
   password: string;
 }
 
@@ -21,48 +21,43 @@ interface LoginResult {
 
 export async function employeeLoginAction(input: LoginInput): Promise<LoginResult> {
   try {
-    const { siteCode, password } = input;
+    const { phone, password } = input;
 
-    if (!siteCode || !password) {
+    if (!phone || !password) {
       return { success: false, error: "Tous les champs sont obligatoires." };
     }
 
-    const site = await prisma.site.findUnique({
-      where: { code: siteCode.toUpperCase().trim() },
-      select: { id: true, name: true, companyId: true, isActive: true },
-    });
+    const normalizedPhone = phone.trim().replace(/\s+/g, "");
 
-    if (!site) {
-      return { success: false, error: "Code du site incorrect. Vérifiez le code donné par votre responsable." };
-    }
-
-    if (!site.isActive) {
-      return { success: false, error: "Ce site n'est plus actif. Contactez votre responsable." };
-    }
-
-    const employees = await prisma.employee.findMany({
+    const employee = await prisma.employee.findFirst({
       where: {
-        companyId: site.companyId,
-        siteId: site.id,
+        phone: normalizedPhone,
         isActive: true,
         passwordHash: { not: null },
       },
+      include: {
+        site: { select: { id: true, name: true } },
+      },
     });
 
-    const employee = employees.find((emp) =>
-      emp.passwordHash ? verifyPassword(password, emp.passwordHash) : false,
-    );
-
     if (!employee) {
-      return { success: false, error: "Code du site ou mot de passe incorrect." };
+      return { success: false, error: "Numéro de téléphone ou mot de passe incorrect." };
+    }
+
+    if (!employee.passwordHash || !verifyPassword(password, employee.passwordHash)) {
+      return { success: false, error: "Numéro de téléphone ou mot de passe incorrect." };
+    }
+
+    if (!employee.site) {
+      return { success: false, error: "Aucun site assigné à votre compte. Contactez votre responsable." };
     }
 
     const token = createSessionToken({
       employeeId: employee.id,
-      companyId: site.companyId,
-      siteId: site.id,
-      siteName: site.name,
-      siteCode: siteCode.toUpperCase().trim(),
+      companyId: employee.companyId,
+      siteId: employee.site.id,
+      siteName: employee.site.name,
+      phone: normalizedPhone,
       firstName: employee.firstName,
       lastName: employee.lastName,
       matricule: employee.matricule || "",
