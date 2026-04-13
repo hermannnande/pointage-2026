@@ -47,11 +47,24 @@ function fmtTime(d: Date | string | null | undefined): string {
 }
 
 type GeoData = { latitude: number; longitude: number; accuracy: number; timestamp: number };
+type SiteGeo = { latitude: number; longitude: number; geofenceRadius: number } | null;
 let cachedPosition: GeoData | null = null;
 let geoWatchId: number | null = null;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6_371_000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function startGeoWatch() {
@@ -126,16 +139,44 @@ function requestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string 
   });
 }
 
-async function requestBestGeoPosition(): Promise<{ data: GeoData | null; errorMsg: string | null }> {
-  const first = await requestGeoPosition();
-  if (!first.data) return first;
+async function requestBestGeoPosition(
+  siteGeo: SiteGeo,
+): Promise<{ data: GeoData | null; errorMsg: string | null }> {
+  const samples: GeoData[] = [];
+  let lastErr: string | null = null;
 
-  await sleep(1200);
-  const second = await requestGeoPosition();
-  if (!second.data) return first;
+  for (let i = 0; i < 3; i += 1) {
+    const r = await requestGeoPosition();
+    if (r.data) samples.push(r.data);
+    else if (r.errorMsg) lastErr = r.errorMsg;
+    if (i < 2) await sleep(900);
+  }
 
-  // On retient la lecture la plus précise (accuracy la plus basse).
-  return second.data.accuracy <= first.data.accuracy ? second : first;
+  if (samples.length === 0) return { data: null, errorMsg: lastErr };
+
+  if (siteGeo) {
+    let best = samples[0];
+    let bestDist = distanceMeters(
+      best.latitude,
+      best.longitude,
+      siteGeo.latitude,
+      siteGeo.longitude,
+    );
+    for (const s of samples.slice(1)) {
+      const d = distanceMeters(s.latitude, s.longitude, siteGeo.latitude, siteGeo.longitude);
+      if (d < bestDist) {
+        best = s;
+        bestDist = d;
+      }
+    }
+    return { data: best, errorMsg: null };
+  }
+
+  // fallback: meilleure precision
+  const bestAccuracy = samples.reduce((best, s) =>
+    s.accuracy <= best.accuracy ? s : best
+  );
+  return { data: bestAccuracy, errorMsg: null };
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, { label: string; color: string }> = {
@@ -164,6 +205,7 @@ export default function EmployeeSpacePage() {
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [geoReady, setGeoReady] = useState(false);
+  const [siteGeo, setSiteGeo] = useState<SiteGeo>(null);
   const [workEndTime, setWorkEndTime] = useState<string | null>(null);
   const [subBlocked, setSubBlocked] = useState(false);
   const [subBlockedMsg, setSubBlockedMsg] = useState("");
@@ -217,6 +259,15 @@ export default function EmployeeSpacePage() {
       setRecord(data);
       setHistory(hist);
       setWorkEndTime(schedule?.workEndTime ?? null);
+      if (schedule?.latitude != null && schedule?.longitude != null && schedule?.geofenceRadius != null) {
+        setSiteGeo({
+          latitude: schedule.latitude,
+          longitude: schedule.longitude,
+          geofenceRadius: schedule.geofenceRadius,
+        });
+      } else {
+        setSiteGeo(null);
+      }
     } catch {
       toast.error("Impossible de charger vos données");
     } finally {
@@ -296,7 +347,7 @@ export default function EmployeeSpacePage() {
     setLoadingAction(type);
     try {
       // Toujours demander une position fraiche, en double lecture pour limiter les faux GPS mobiles.
-      const freshRes = await requestBestGeoPosition();
+      const freshRes = await requestBestGeoPosition(siteGeo);
       const geo = freshRes.data;
       if (!geo) {
         toast.error(

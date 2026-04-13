@@ -74,16 +74,28 @@ export async function getEmployeeTodayAction() {
   return attendanceService.getEmployeeTodayRecord(session.companyId, session.employeeId);
 }
 
-export async function getEmployeeSiteScheduleAction(): Promise<{ workEndTime: string | null } | null> {
+export async function getEmployeeSiteScheduleAction(): Promise<{
+  workEndTime: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  geofenceRadius: number | null;
+} | null> {
   const session = await getEmployeeSession();
   if (!session) return null;
 
   const employee = await prisma.employee.findFirst({
     where: { id: session.employeeId, companyId: session.companyId },
-    select: { site: { select: { workEndTime: true } } },
+    select: {
+      site: { select: { workEndTime: true, latitude: true, longitude: true, geofenceRadius: true } },
+    },
   });
 
-  return { workEndTime: employee?.site?.workEndTime ?? null };
+  return {
+    workEndTime: employee?.site?.workEndTime ?? null,
+    latitude: employee?.site?.latitude ?? null,
+    longitude: employee?.site?.longitude ?? null,
+    geofenceRadius: employee?.site?.geofenceRadius ?? null,
+  };
 }
 
 export async function getEmployeeRecentHistoryAction() {
