@@ -44,10 +44,6 @@ export interface ClockPayload {
   notes?: string;
 }
 
-const MAX_ACCURACY_ALLOWED = 500;
-const MIN_COOLDOWN_SECONDS = 5;
-const MAX_SPEED_MPS = 100; // ~360 km/h — filtre uniquement les GPS fictifs évidents
-
 export async function clockAction(payload: ClockPayload) {
   const { employeeId, companyId, type, latitude, longitude, accuracy, source = "WEB", notes } = payload;
   const now = new Date();
@@ -61,61 +57,11 @@ export async function clockAction(payload: ClockPayload) {
 
   const site = employee.site;
 
-  if (source !== "KIOSK" && (latitude == null || longitude == null)) {
-    throw new Error("La localisation est obligatoire pour effectuer le pointage.");
-  }
-
-  if (source !== "KIOSK" && accuracy != null && accuracy > MAX_ACCURACY_ALLOWED) {
-    throw new Error(
-      `Précision GPS insuffisante (${Math.round(accuracy)}m). Activez le GPS haute précision et allez dans un endroit dégagé.`
-    );
-  }
-
-  if (source !== "KIOSK") {
-    const lastEvent = await prisma.attendanceEvent.findFirst({
-      where: { employeeId },
-      orderBy: { timestamp: "desc" },
-    });
-
-    if (lastEvent) {
-      const secondsSinceLast = (now.getTime() - lastEvent.timestamp.getTime()) / 1000;
-      if (secondsSinceLast < MIN_COOLDOWN_SECONDS) {
-        throw new Error(
-          `Veuillez patienter quelques secondes avant de pointer à nouveau.`
-        );
-      }
-
-      if (
-        latitude != null && longitude != null &&
-        lastEvent.latitude != null && lastEvent.longitude != null &&
-        secondsSinceLast > 0
-      ) {
-        const distSinceLast = distanceMeters(
-          lastEvent.latitude, lastEvent.longitude,
-          latitude, longitude,
-        );
-        const speed = distSinceLast / secondsSinceLast;
-        if (speed > MAX_SPEED_MPS && distSinceLast > 5000) {
-          throw new Error(
-            "Position suspecte détectée. Votre localisation a changé trop rapidement. Désactivez toute application de position fictive et réessayez."
-          );
-        }
-      }
-    }
-  }
-
   let isGeofenceOk: boolean | null = null;
   let distToSite: number | null = null;
   if (site && latitude != null && longitude != null && site.latitude != null && site.longitude != null) {
     distToSite = distanceMeters(latitude, longitude, site.latitude, site.longitude);
     isGeofenceOk = distToSite <= site.geofenceRadius;
-
-    if (!isGeofenceOk && source !== "KIOSK") {
-      const distRounded = Math.round(distToSite);
-      throw new Error(
-        `Vous êtes à ${distRounded}m du site "${site.name}" (rayon autorisé : ${site.geofenceRadius}m). Rapprochez-vous du lieu de travail pour pointer.`
-      );
-    }
   }
 
   let record = await prisma.attendanceRecord.findUnique({

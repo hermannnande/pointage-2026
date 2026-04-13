@@ -13,7 +13,6 @@ import {
   Pause,
   Play,
   User,
-  MapPinOff,
   MessageCircle,
   HelpCircle,
 } from "lucide-react";
@@ -23,14 +22,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 import {
@@ -152,8 +143,6 @@ export default function EmployeeSpacePage() {
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [geoReady, setGeoReady] = useState(false);
-  const [geoRequesting, setGeoRequesting] = useState(false);
-  const [showLocationHelp, setShowLocationHelp] = useState(false);
   const [workEndTime, setWorkEndTime] = useState<string | null>(null);
   const [subBlocked, setSubBlocked] = useState(false);
   const [subBlockedMsg, setSubBlockedMsg] = useState("");
@@ -281,25 +270,6 @@ export default function EmployeeSpacePage() {
     };
   }, [record, openBreak]);
 
-  async function handleEnableGeo() {
-    setGeoRequesting(true);
-    try {
-      const { data, errorMsg } = await requestGeoPosition();
-      if (!data) {
-        setGeoReady(false);
-        toast.error(errorMsg || "Impossible d'activer la localisation.");
-        setShowLocationHelp(true);
-        return;
-      }
-      cachedPosition = data;
-      startGeoWatch();
-      setGeoReady(true);
-      toast.success("Localisation activée. Vous pouvez pointer.");
-    } finally {
-      setGeoRequesting(false);
-    }
-  }
-
   async function runClock(type: EventType) {
     setLoadingAction(type);
     try {
@@ -313,20 +283,12 @@ export default function EmployeeSpacePage() {
           setGeoReady(true);
         }
       }
-      if (!geo) {
-        setGeoReady(false);
-        setShowLocationHelp(true);
-        toast.error(
-          "Localisation obligatoire. Appuyez sur \"Activer ma localisation\" puis réessayez.",
-        );
-        return;
-      }
 
       const res = await employeeClockAction({
         type,
-        latitude: geo.latitude,
-        longitude: geo.longitude,
-        accuracy: geo.accuracy,
+        latitude: geo?.latitude,
+        longitude: geo?.longitude,
+        accuracy: geo?.accuracy,
       });
       if (!res.success) {
         toast.error(res.error ?? "Action impossible");
@@ -462,35 +424,11 @@ export default function EmployeeSpacePage() {
 
           {/* Action buttons */}
           <div className="flex w-full flex-col gap-3">
-            {!geoReady && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
-                <p className="text-sm font-medium">
-                  La localisation est obligatoire pour pointer.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-2 w-full border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
-                  disabled={geoRequesting || loadingAction !== null}
-                  onClick={() => void handleEnableGeo()}
-                >
-                  {geoRequesting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Activation...
-                    </>
-                  ) : (
-                    "Activer ma localisation"
-                  )}
-                </Button>
-              </div>
-            )}
-
             {!record?.clockIn && (
               <Button
                 size="lg"
                 className="h-14 w-full gap-3 rounded-xl bg-green-600 text-lg font-semibold text-white shadow-lg hover:bg-green-700"
-                disabled={recordLoading || loadingAction !== null || !geoReady}
+                disabled={recordLoading || loadingAction !== null}
                 onClick={() => void runClock("CLOCK_IN")}
               >
                 {loadingAction === "CLOCK_IN" ? (
@@ -507,7 +445,7 @@ export default function EmployeeSpacePage() {
                 <Button
                   size="lg"
                   className="h-14 w-full gap-3 rounded-xl bg-amber-500 text-lg font-semibold text-white shadow-lg hover:bg-amber-600"
-                  disabled={recordLoading || loadingAction !== null || !geoReady}
+                  disabled={recordLoading || loadingAction !== null}
                   onClick={() => void runClock("BREAK_START")}
                 >
                   {loadingAction === "BREAK_START" ? (
@@ -520,7 +458,7 @@ export default function EmployeeSpacePage() {
                 <Button
                   size="lg"
                   className="h-14 w-full gap-3 rounded-xl bg-red-600 text-lg font-semibold text-white shadow-lg hover:bg-red-700"
-                  disabled={recordLoading || loadingAction !== null || !geoReady}
+                  disabled={recordLoading || loadingAction !== null}
                   onClick={() => void runClock("CLOCK_OUT")}
                 >
                   {loadingAction === "CLOCK_OUT" ? (
@@ -537,7 +475,7 @@ export default function EmployeeSpacePage() {
               <Button
                 size="lg"
                 className="h-14 w-full gap-3 rounded-xl bg-green-600 text-lg font-semibold text-white shadow-lg hover:bg-green-700"
-                disabled={recordLoading || loadingAction !== null || !geoReady}
+                disabled={recordLoading || loadingAction !== null}
                 onClick={() => void runClock("BREAK_END")}
               >
                 {loadingAction === "BREAK_END" ? (
@@ -553,7 +491,7 @@ export default function EmployeeSpacePage() {
               <Button
                 size="lg"
                 className="h-14 w-full gap-3 rounded-xl bg-green-600 text-lg font-semibold text-white shadow-lg hover:bg-green-700"
-                disabled={recordLoading || loadingAction !== null || !geoReady}
+                disabled={recordLoading || loadingAction !== null}
                 onClick={() => void runClock("CLOCK_IN")}
               >
                 {loadingAction === "CLOCK_IN" ? (
@@ -640,77 +578,6 @@ export default function EmployeeSpacePage() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={showLocationHelp} onOpenChange={setShowLocationHelp}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Comment activer la localisation ?</DialogTitle>
-            <DialogDescription>
-              Votre téléphone bloque l&apos;accès à votre position. Cela arrive souvent à cause d&apos;une bulle de chat (Messenger, WhatsApp) ou d&apos;un blocage de votre navigateur.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-            <div className="flex items-start gap-3">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold dark:bg-slate-800">
-                1
-              </div>
-              <p>
-                Touchez le petit <strong>cadenas</strong> ou l&apos;icône des paramètres dans la <strong>barre d&apos;adresse en haut</strong> de votre écran.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold dark:bg-slate-800">
-                2
-              </div>
-              <p>
-                Appuyez sur <strong>Autorisations</strong> ou <strong>Paramètres du site</strong>.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold dark:bg-slate-800">
-                3
-              </div>
-              <p>
-                Trouvez <strong>Position / Localisation</strong> et choisissez <strong>Autoriser</strong>.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold dark:bg-slate-800">
-                4
-              </div>
-              <p>
-                <strong>Rechargez cette page</strong> (glissez vers le bas) et appuyez sur Activer ma localisation.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="sm:justify-end flex-col sm:flex-row gap-2 sm:gap-0 mt-2">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto gap-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 dark:border-green-900 dark:bg-green-900/30 dark:text-green-400"
-              asChild
-            >
-              <a
-                href="https://wa.me/2250778030075?text=Bonjour,%20j'ai%20besoin%20d'aide%20pour%20activer%20ma%20localisation%20sur%20OControle."
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Contactez-nous sur WhatsApp
-              </a>
-            </Button>
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setShowLocationHelp(false);
-                window.location.reload();
-              }}
-            >
-              Recharger la page
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Help section */}
       <div className="flex flex-col items-center justify-center gap-2 pt-2 pb-6 text-center">
