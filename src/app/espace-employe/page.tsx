@@ -61,7 +61,7 @@ function startGeoWatch() {
       };
     },
     () => {},
-    { enableHighAccuracy: false, maximumAge: 60_000 },
+    { enableHighAccuracy: true, maximumAge: 15_000 },
   );
 }
 
@@ -90,7 +90,7 @@ function requestGeoPosition(): Promise<{ latitude: number; longitude: number } |
         });
       },
       () => resolve(null),
-      { enableHighAccuracy: false, timeout: 15_000, maximumAge: 60_000 },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 5_000 },
     );
   });
 }
