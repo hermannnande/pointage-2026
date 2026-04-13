@@ -99,11 +99,11 @@ export default function OnboardingPage() {
 
         try {
           const resp = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fr`,
+            `/api/geocode?mode=reverse&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
           );
           if (resp.ok) {
             const data = await resp.json();
-            const addr = data.display_name;
+            const addr = data.display;
             if (addr) setGeoAddress(addr.split(",").slice(0, 3).join(",").trim());
           }
         } catch {

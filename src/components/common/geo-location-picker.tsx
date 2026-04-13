@@ -96,13 +96,11 @@ function geolocationErrorMessage(err: GeolocationPositionError): string {
 
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
-    const resp = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=fr`,
-    );
+    const resp = await fetch(`/api/geocode?mode=reverse&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`);
     if (!resp.ok) return null;
     const data = await resp.json();
-    return data.display_name
-      ? (data.display_name as string).split(",").slice(0, 3).join(",").trim()
+    return data.display
+      ? (data.display as string).split(",").slice(0, 3).join(",").trim()
       : null;
   } catch {
     return null;
@@ -111,15 +109,14 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
 
 async function searchAddress(query: string): Promise<Array<{ lat: number; lng: number; display: string }>> {
   try {
-    const resp = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=fr`,
-    );
+    const resp = await fetch(`/api/geocode?mode=search&q=${encodeURIComponent(query)}`);
     if (!resp.ok) return [];
     const data = await resp.json();
-    return (data as Array<{ lat: string; lon: string; display_name: string }>).map((r) => ({
-      lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon),
-      display: r.display_name,
+    if (!Array.isArray(data?.results)) return [];
+    return (data.results as Array<{ lat: number; lng: number; display: string }>).map((r) => ({
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+      display: String(r.display),
     }));
   } catch {
     return [];
