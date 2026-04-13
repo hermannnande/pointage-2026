@@ -65,6 +65,13 @@ export async function clockAction(payload: ClockPayload) {
   if (site && latitude != null && longitude != null && site.latitude != null && site.longitude != null) {
     const dist = distanceMeters(latitude, longitude, site.latitude, site.longitude);
     isGeofenceOk = dist <= site.geofenceRadius;
+
+    if (!isGeofenceOk && source !== "KIOSK") {
+      const distRounded = Math.round(dist);
+      throw new Error(
+        `Vous êtes à ${distRounded}m du site "${site.name}" (rayon autorisé : ${site.geofenceRadius}m). Rapprochez-vous du lieu de travail pour pointer.`
+      );
+    }
   }
 
   let record = await prisma.attendanceRecord.findUnique({
