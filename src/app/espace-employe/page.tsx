@@ -10,11 +10,14 @@ import {
   Loader2,
   LogIn,
   LogOut,
+  MapPin,
+  Navigation,
   Pause,
   Play,
   User,
   MessageCircle,
   HelpCircle,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -178,6 +181,9 @@ export default function EmployeeSpacePage() {
   const [workEndTime, setWorkEndTime] = useState<string | null>(null);
   const [subBlocked, setSubBlocked] = useState(false);
   const [subBlockedMsg, setSubBlockedMsg] = useState("");
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "loading" | "active" | "denied" | "error">("idle");
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsAddress, setGpsAddress] = useState<string | null>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);
@@ -187,6 +193,37 @@ export default function EmployeeSpacePage() {
   useEffect(() => {
     startGeoWatch();
     return () => stopGeoWatch();
+  }, []);
+
+  const activateGps = useCallback(async () => {
+    setGpsStatus("loading");
+    setGpsAddress(null);
+    setGpsAccuracy(null);
+    try {
+      const pos = await freshGeoSample(15_000);
+      if (!pos) {
+        setGpsStatus("error");
+        toast.error("Impossible d'obtenir votre position. Vérifiez que le GPS est activé.");
+        return;
+      }
+      setGpsAccuracy(Math.round(pos.coords.accuracy));
+
+      const { verified, googleAddress } = await googleVerifyPosition(
+        pos.coords.latitude,
+        pos.coords.longitude,
+      );
+      if (verified) {
+        setGpsStatus("active");
+        setGpsAddress(googleAddress ? googleAddress.split(",").slice(0, 2).join(",").trim() : null);
+        toast.success("Localisation Google Maps activée !");
+      } else {
+        setGpsStatus("error");
+        toast.error("Google Maps n'a pas pu vérifier votre position. Réessayez.");
+      }
+    } catch {
+      setGpsStatus("denied");
+      toast.error("Accès à la localisation refusé. Autorisez le GPS dans les paramètres.");
+    }
   }, []);
 
   useEffect(() => {
@@ -430,6 +467,91 @@ export default function EmployeeSpacePage() {
             </Button>
           </div>
         </div>
+      </Card>
+
+      {/* GPS Status */}
+      <Card className="rounded-2xl border-0 shadow-md">
+        <CardContent className="p-4">
+          {gpsStatus === "idle" && (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                <Navigation className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-amber-800">Localisation non activée</p>
+                <p className="text-xs text-amber-600">Activez le GPS pour pouvoir pointer</p>
+              </div>
+              <Button
+                size="sm"
+                className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700"
+                onClick={() => void activateGps()}
+              >
+                <MapPin className="h-4 w-4" />
+                Activer
+              </Button>
+            </div>
+          )}
+
+          {gpsStatus === "loading" && (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-800">Détection Google Maps...</p>
+                <p className="text-xs text-blue-600">Recherche de votre position exacte</p>
+              </div>
+            </div>
+          )}
+
+          {gpsStatus === "active" && (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-green-800">GPS Google Maps actif</p>
+                <p className="truncate text-xs text-green-600">
+                  {gpsAddress ?? "Position vérifiée"}
+                  {gpsAccuracy != null && ` · ±${gpsAccuracy}m`}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0 text-xs text-green-700 hover:text-green-800"
+                onClick={() => void activateGps()}
+              >
+                Actualiser
+              </Button>
+            </div>
+          )}
+
+          {(gpsStatus === "denied" || gpsStatus === "error") && (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <XCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-red-800">
+                  {gpsStatus === "denied" ? "Localisation refusée" : "Localisation impossible"}
+                </p>
+                <p className="text-xs text-red-600">
+                  {gpsStatus === "denied"
+                    ? "Autorisez la localisation dans les paramètres de votre navigateur"
+                    : "Activez le GPS (mode haute précision) puis réessayez"}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="shrink-0 gap-1.5 bg-red-600 hover:bg-red-700"
+                onClick={() => void activateGps()}
+              >
+                Réessayer
+              </Button>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Clock + Status */}
