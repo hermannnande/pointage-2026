@@ -46,7 +46,7 @@ function fmtTime(d: Date | string | null | undefined): string {
   });
 }
 
-let cachedPosition: { latitude: number; longitude: number } | null = null;
+let cachedPosition: { latitude: number; longitude: number; accuracy: number } | null = null;
 let geoWatchId: number | null = null;
 
 function startGeoWatch() {
@@ -55,13 +55,16 @@ function startGeoWatch() {
 
   geoWatchId = navigator.geolocation.watchPosition(
     (pos) => {
-      cachedPosition = {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-      };
+      if (!cachedPosition || pos.coords.accuracy < cachedPosition.accuracy) {
+        cachedPosition = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+      }
     },
     () => {},
-    { enableHighAccuracy: true, maximumAge: 15_000 },
+    { enableHighAccuracy: true, maximumAge: 10_000 },
   );
 }
 
@@ -72,27 +75,78 @@ function stopGeoWatch() {
   }
 }
 
-function getCachedGeo() {
-  return cachedPosition;
-}
-
-function requestGeoPosition(): Promise<{ latitude: number; longitude: number } | null> {
+function getGeoSample(timeoutMs: number): Promise<GeolocationPosition | null> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       resolve(null);
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        resolve({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        });
-      },
+      (pos) => resolve(pos),
       () => resolve(null),
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 5_000 },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 },
     );
   });
+}
+
+async function verifyWithGoogle(
+  lat: number,
+  lng: number,
+): Promise<boolean> {
+  try {
+    const resp = await fetch(
+      `/api/geocode?mode=reverse&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+    );
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    return !!data.display && data.provider === "google";
+  } catch {
+    return false;
+  }
+}
+
+async function requestGoogleGeoPosition(): Promise<{
+  latitude: number;
+  longitude: number;
+} | null> {
+  const samples: GeolocationPosition[] = [];
+
+  for (let i = 0; i < 3; i += 1) {
+    const sample = await getGeoSample(i === 0 ? 12_000 : 8_000);
+    if (sample) {
+      samples.push(sample);
+      if (sample.coords.accuracy <= 50) break;
+    }
+    if (i < 2) await new Promise((r) => setTimeout(r, 800));
+  }
+
+  if (cachedPosition && (samples.length === 0 || cachedPosition.accuracy < (samples[0]?.coords.accuracy ?? Infinity))) {
+    samples.push({
+      coords: {
+        latitude: cachedPosition.latitude,
+        longitude: cachedPosition.longitude,
+        accuracy: cachedPosition.accuracy,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null,
+      },
+      timestamp: Date.now(),
+    } as GeolocationPosition);
+  }
+
+  if (samples.length === 0) return null;
+
+  const best = samples.reduce((prev, curr) =>
+    curr.coords.accuracy < prev.coords.accuracy ? curr : prev,
+  );
+
+  const lat = best.coords.latitude;
+  const lng = best.coords.longitude;
+
+  await verifyWithGoogle(lat, lng);
+
+  return { latitude: lat, longitude: lng };
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, { label: string; color: string }> = {
@@ -120,7 +174,7 @@ export default function EmployeeSpacePage() {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [geoReady, setGeoReady] = useState(false);
+
   const [workEndTime, setWorkEndTime] = useState<string | null>(null);
   const [subBlocked, setSubBlocked] = useState(false);
   const [subBlockedMsg, setSubBlockedMsg] = useState("");
@@ -132,7 +186,6 @@ export default function EmployeeSpacePage() {
 
   useEffect(() => {
     startGeoWatch();
-    if (getCachedGeo()) setGeoReady(true);
     return () => stopGeoWatch();
   }, []);
 
@@ -252,12 +305,19 @@ export default function EmployeeSpacePage() {
   async function runClock(type: EventType) {
     setLoadingAction(type);
     try {
-      const geo = getCachedGeo() ?? (await requestGeoPosition());
+      const geo = await requestGoogleGeoPosition();
+
+      if (!geo) {
+        toast.error(
+          "Impossible de vous localiser via Google Maps. Activez le GPS puis réessayez.",
+        );
+        return;
+      }
 
       const res = await employeeClockAction({
         type,
-        latitude: geo?.latitude ?? null,
-        longitude: geo?.longitude ?? null,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
       });
       if (!res.success) {
         toast.error(res.error ?? "Action impossible");
