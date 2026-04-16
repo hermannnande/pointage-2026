@@ -49,7 +49,7 @@ const STEPS = [
     icon: Building2,
     title: "Actions rapides",
     description:
-      "Ces raccourcis vous permettent d'ajouter un employe, configurer un site ou voir les pointages en un clic.",
+      "Ces raccourcis vous permettent d'ajouter un employe, configurer un lieu de travail ou voir les pointages en un clic.",
     color: "text-purple-600",
     bg: "bg-purple-50",
   },
@@ -58,7 +58,7 @@ const STEPS = [
     icon: KeyRound,
     title: "Comment vos employes se connectent",
     description:
-      "Quand vous creez un employe, vous lui definissez un mot de passe. Chaque site a un code unique (visible dans Sites). L'employe se connecte sur la page /employe avec : le code du site + son matricule + son mot de passe.",
+      "Quand vous creez un employe, vous lui definissez un mot de passe. Chaque lieu de travail a un code unique (visible dans Lieux de travail). L'employe se connecte sur la page /employe avec : le code du lieu + son matricule + son mot de passe.",
     color: "text-teal-600",
     bg: "bg-teal-50",
   },
@@ -85,7 +85,7 @@ const STEPS = [
     icon: Calendar,
     title: "Le menu de navigation",
     description:
-      "Toutes les sections sont accessibles depuis le menu : employes, sites, plannings, conges, rapports et parametres. Sur telephone, appuyez sur le menu en haut a gauche.",
+      "Toutes les sections sont accessibles depuis le menu : employes, lieux de travail, plannings, conges, rapports et parametres. Sur telephone, appuyez sur le menu en haut a gauche.",
     color: "text-amber-600",
     bg: "bg-amber-50",
   },
@@ -103,7 +103,7 @@ const STEPS = [
     icon: CheckCircle2,
     title: "Vous etes pret !",
     description:
-      "Vous connaissez maintenant l'essentiel. Commencez par ajouter vos employes et configurer vos sites. Donnez-leur leur code de site, matricule et mot de passe pour qu'ils puissent pointer.",
+      "Vous connaissez maintenant l'essentiel. Commencez par ajouter vos employes et configurer vos lieux de travail. Donnez-leur le code du lieu, leur matricule et mot de passe pour qu'ils puissent pointer.",
     color: "text-green-600",
     bg: "bg-green-50",
   },

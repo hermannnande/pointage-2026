@@ -98,7 +98,7 @@ export default function TrialsPage() {
                     <th className="px-4 py-3">Jours restants</th>
                     <th className="px-4 py-3">Abonnement</th>
                     <th className="px-4 py-3 text-center">Employés</th>
-                    <th className="px-4 py-3 text-center">Sites</th>
+                    <th className="px-4 py-3 text-center">Lieux</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">

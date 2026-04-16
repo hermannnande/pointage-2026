@@ -11,7 +11,7 @@ export const clockActionSchema = z.object({
 
 export const kioskClockSchema = z.object({
   pin: z.string().min(4, "PIN requis").max(10),
-  siteId: z.string().min(1, "Site requis"),
+  siteId: z.string().min(1, "Lieu de travail requis"),
   type: z.enum(["CLOCK_IN", "CLOCK_OUT", "BREAK_START", "BREAK_END"]),
 });
 

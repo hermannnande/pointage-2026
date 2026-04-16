@@ -45,10 +45,10 @@ export const ALL_PERMISSIONS: {
   category: string;
   description: string;
 }[] = [
-  { slug: PERMISSIONS.SITES_VIEW, name: "Voir les sites", category: "sites", description: "Consulter la liste des sites" },
-  { slug: PERMISSIONS.SITES_CREATE, name: "Créer un site", category: "sites", description: "Ajouter un nouveau site" },
-  { slug: PERMISSIONS.SITES_UPDATE, name: "Modifier un site", category: "sites", description: "Modifier les informations d'un site" },
-  { slug: PERMISSIONS.SITES_DELETE, name: "Supprimer un site", category: "sites", description: "Supprimer un site" },
+  { slug: PERMISSIONS.SITES_VIEW, name: "Voir les lieux de travail", category: "sites", description: "Consulter la liste des lieux de travail" },
+  { slug: PERMISSIONS.SITES_CREATE, name: "Créer un lieu de travail", category: "sites", description: "Ajouter un nouveau lieu de travail" },
+  { slug: PERMISSIONS.SITES_UPDATE, name: "Modifier un lieu de travail", category: "sites", description: "Modifier les informations d'un lieu de travail" },
+  { slug: PERMISSIONS.SITES_DELETE, name: "Supprimer un lieu de travail", category: "sites", description: "Supprimer un lieu de travail" },
 
   { slug: PERMISSIONS.EMPLOYEES_VIEW, name: "Voir les employés", category: "employees", description: "Consulter la liste des employés" },
   { slug: PERMISSIONS.EMPLOYEES_CREATE, name: "Ajouter un employé", category: "employees", description: "Créer un nouvel employé" },
@@ -134,7 +134,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 export const SYSTEM_ROLES = [
   { slug: "owner", name: "Propriétaire", description: "Propriétaire de l'entreprise — accès total" },
   { slug: "admin", name: "Administrateur", description: "Administrateur — accès complet sauf facturation" },
-  { slug: "manager", name: "Manager", description: "Responsable de site — accès limité à son/ses site(s)" },
+  { slug: "manager", name: "Manager", description: "Responsable — accès limité à son/ses lieu(x) de travail" },
   { slug: "hr", name: "RH", description: "Ressources Humaines — gestion employés et paie" },
   { slug: "employee", name: "Employé", description: "Employé — pointage et consultation personnelle" },
 ] as const;

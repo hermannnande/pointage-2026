@@ -83,7 +83,7 @@ export default function WeeklySchedulesPage() {
         if (!cancelled) setSites(list);
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger les sites");
+          toast.error("Impossible de charger les lieux de travail");
           setSites([]);
         }
       } finally {
@@ -220,10 +220,10 @@ export default function WeeklySchedulesPage() {
           disabled={sitesLoading}
         >
           <SelectTrigger className="w-full sm:w-56">
-            <SelectValue placeholder="Filtrer par site" />
+            <SelectValue placeholder="Filtrer par lieu" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_SITES}>Tous les sites</SelectItem>
+            <SelectItem value={ALL_SITES}>Tous les lieux</SelectItem>
             {sites.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.name}

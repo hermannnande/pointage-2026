@@ -493,10 +493,10 @@ export default function DashboardPage() {
               onValueChange={(v) => setSiteFilter(v || ALL_SITES)}
             >
               <SelectTrigger className="w-[180px] min-w-0 rounded-xl" size="sm">
-                <SelectValue placeholder="Filtrer par site" />
+                <SelectValue placeholder="Filtrer par lieu" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_SITES}>Tous les sites</SelectItem>
+                <SelectItem value={ALL_SITES}>Tous les lieux</SelectItem>
                 {sites.map((s) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
@@ -608,7 +608,7 @@ export default function DashboardPage() {
                 />
                 <QuickAction
                   icon={MapPin}
-                  title="Configurer un site"
+                  title="Configurer un lieu"
                   description="Définissez les lieux autorisés pour le pointage."
                   href="/dashboard/sites/new"
                   color="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"

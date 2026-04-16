@@ -121,7 +121,7 @@ export default function CompanyDetailPage() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         {[
           { label: "Employés", value: company._count.employees, icon: Users, color: "text-blue-600" },
-          { label: "Sites", value: company._count.sites, icon: MapPin, color: "text-green-600" },
+          { label: "Lieux", value: company._count.sites, icon: MapPin, color: "text-green-600" },
           { label: "Pointages", value: company.totalClockings, icon: Clock, color: "text-purple-600" },
           { label: "Revenus", value: `${(company.totalRevenue ?? 0).toLocaleString("fr-FR")} XOF`, icon: CreditCard, color: "text-emerald-600" },
           { label: "Plan", value: sub?.plan?.name ?? "—", icon: FileText, color: "text-amber-600" },
@@ -185,7 +185,7 @@ export default function CompanyDetailPage() {
         <TabsList>
           <TabsTrigger value="info">Infos</TabsTrigger>
           <TabsTrigger value="employees">Employés ({company.employees.length})</TabsTrigger>
-          <TabsTrigger value="sites">Sites ({company.sites.length})</TabsTrigger>
+          <TabsTrigger value="sites">Lieux ({company.sites.length})</TabsTrigger>
           <TabsTrigger value="billing">Facturation</TabsTrigger>
           <TabsTrigger value="admins">Admins</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>

@@ -62,7 +62,7 @@ export function DashboardHeader({ companyName }: DashboardHeaderProps) {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Rechercher un employé, un site..."
+            placeholder="Rechercher un employé, un lieu..."
             className="rounded-xl border-0 bg-muted/50 pl-9"
           />
         </div>

@@ -28,7 +28,7 @@ const FAQ_ITEMS = [
   {
     question: "Comment fonctionne le géofence ?",
     answer:
-      "Le géofence vérifie que l'employé se trouve dans le rayon autorisé autour du site au moment du pointage. Le rayon est configurable par site.",
+      "Le géofence vérifie que l'employé se trouve dans le rayon autorisé autour du lieu de travail au moment du pointage. Le rayon est configurable par lieu.",
   },
   {
     question: "Comment configurer les horaires ?",
@@ -38,7 +38,7 @@ const FAQ_ITEMS = [
   {
     question: "Comment un employé se connecte ?",
     answer:
-      "L'employé se rend sur la page /employe et entre le code du site (donné par le responsable) ainsi que son mot de passe personnel. C'est tout !",
+      "L'employé se rend sur la page /employe et entre le code du lieu (donné par le responsable) ainsi que son mot de passe personnel. C'est tout !",
   },
   {
     question: "Comment approuver une demande de congé ?",

@@ -63,9 +63,9 @@ export async function deleteSite(companyId: string, siteId: string) {
     include: { _count: { select: { employees: { where: { isActive: true } } } } },
   });
 
-  if (!site) throw new Error("Site introuvable");
+  if (!site) throw new Error("Lieu de travail introuvable");
   if (site._count.employees > 0) {
-    throw new Error("Impossible de supprimer un site avec des employés actifs");
+    throw new Error("Impossible de supprimer un lieu de travail avec des employés actifs");
   }
 
   return prisma.site.delete({ where: { id: siteId } });

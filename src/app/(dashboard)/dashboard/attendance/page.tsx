@@ -126,7 +126,7 @@ export default function AttendanceLivePage() {
         if (!cancelled) setSites(data);
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger les sites");
+          toast.error("Impossible de charger les lieux de travail");
           setSites([]);
         }
       } finally {
@@ -173,7 +173,7 @@ export default function AttendanceLivePage() {
       },
       {
         id: "site",
-        header: "Site",
+        header: "Lieu",
         cell: ({ row }) => row.original.site?.name ?? "—",
       },
       {
@@ -348,10 +348,10 @@ export default function AttendanceLivePage() {
           disabled={sitesLoading}
         >
           <SelectTrigger className="w-full sm:w-[240px]">
-            <SelectValue placeholder="Filtrer par site" />
+            <SelectValue placeholder="Filtrer par lieu" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_SITES_VALUE}>Tous les sites</SelectItem>
+            <SelectItem value={ALL_SITES_VALUE}>Tous les lieux</SelectItem>
             {sites.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.name}

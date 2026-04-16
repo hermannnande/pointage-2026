@@ -38,7 +38,7 @@ const RADIUS_OPTIONS = [
   { value: 50, label: "50 m — Petit local / boutique" },
   { value: 100, label: "100 m — Bureau / magasin" },
   { value: 200, label: "200 m — Bâtiment / entreprise" },
-  { value: 500, label: "500 m — Grand site / campus" },
+  { value: 500, label: "500 m — Grand espace / campus" },
   { value: 1000, label: "1 km — Zone industrielle" },
 ];
 
@@ -107,7 +107,7 @@ export default function EditSitePage() {
         }
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger le site");
+          toast.error("Impossible de charger le lieu de travail");
           setNotFound(true);
         }
       } finally {
@@ -141,7 +141,7 @@ export default function EditSitePage() {
         clockInEnabled,
       });
       if (result.success) {
-        toast.success("Site mis à jour");
+        toast.success("Lieu de travail mis à jour");
         router.refresh();
         const sites = await getSitesAction();
         const found = sites.find((s) => s.id === id) ?? null;
@@ -169,14 +169,14 @@ export default function EditSitePage() {
   if (notFound || !site) {
     return (
       <>
-        <PageHeader title="Site introuvable" />
+        <PageHeader title="Lieu introuvable" />
         <p className="mb-4 text-sm text-muted-foreground">
-          Ce site n&apos;existe pas ou vous n&apos;y avez pas accès.
+          Ce lieu de travail n&apos;existe pas ou vous n&apos;y avez pas accès.
         </p>
         <Button variant="outline" asChild>
           <Link href="/dashboard/sites">
             <ArrowLeft className="h-4 w-4" />
-            Retour aux sites
+            Retour aux lieux
           </Link>
         </Button>
       </>
@@ -189,7 +189,7 @@ export default function EditSitePage() {
 
       <Card className="max-w-3xl">
         <CardHeader>
-          <CardTitle>Modifier le site</CardTitle>
+          <CardTitle>Modifier le lieu de travail</CardTitle>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5">
@@ -317,7 +317,7 @@ export default function EditSitePage() {
             <div className="flex flex-col gap-4 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center justify-between gap-4 sm:justify-start">
                 <Label htmlFor="isActive" className="cursor-pointer">
-                  Site actif
+                  Lieu actif
                 </Label>
                 <Switch
                   id="isActive"

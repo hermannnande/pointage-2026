@@ -165,7 +165,7 @@ export default function AttendanceHistoryPage() {
         if (!cancelled) setSites(data);
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger les sites");
+          toast.error("Impossible de charger les lieux de travail");
           setSites([]);
         }
       } finally {
@@ -299,7 +299,7 @@ export default function AttendanceHistoryPage() {
       },
       {
         id: "site",
-        header: "Site",
+        header: "Lieu",
         cell: ({ row }) => row.original.site?.name ?? "—",
       },
       {
@@ -401,17 +401,17 @@ export default function AttendanceHistoryPage() {
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label>Site</Label>
+          <Label>Lieu</Label>
           <Select
             value={siteFilter}
             onValueChange={(v) => setSiteFilter(v || ALL_SITES)}
             disabled={sitesLoading}
           >
             <SelectTrigger className="w-full sm:w-52">
-              <SelectValue placeholder="Tous les sites" />
+              <SelectValue placeholder="Tous les lieux" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_SITES}>Tous les sites</SelectItem>
+              <SelectItem value={ALL_SITES}>Tous les lieux</SelectItem>
               {sites.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name}
@@ -471,7 +471,7 @@ export default function AttendanceHistoryPage() {
             <p className="text-sm text-muted-foreground">
               {selectedRecord.employee.firstName}{" "}
               {selectedRecord.employee.lastName} — {fmtDate(selectedRecord.date)}{" "}
-              · {selectedRecord.site?.name ?? "Sans site"}
+              · {selectedRecord.site?.name ?? "Sans lieu"}
             </p>
           </CardHeader>
           <CardContent>

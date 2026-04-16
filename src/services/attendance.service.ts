@@ -90,19 +90,19 @@ export async function clockAction(payload: ClockPayload) {
 
     if (!site || site.latitude == null || site.longitude == null) {
       throw new Error(
-        "Le site n'a pas de coordonnées GPS configurées. Contactez votre administrateur.",
+        "Le lieu de travail n'a pas de coordonnées GPS configurées. Contactez votre administrateur.",
       );
     }
 
     if (distToSite == null) {
-      throw new Error("Impossible de calculer votre distance au site. Réessayez.");
+      throw new Error("Impossible de calculer votre distance au lieu de travail. Réessayez.");
     }
 
     if (distToSite > site.geofenceRadius) {
       const distanceRounded = Math.round(distToSite);
       const missingMeters = Math.max(1, Math.round(distToSite - site.geofenceRadius));
       throw new Error(
-        `Hors périmètre de "${site.name}" : vous êtes à ${distanceRounded}m du site (rayon autorisé: ${site.geofenceRadius}m). Rapprochez-vous d'environ ${missingMeters}m. [Site: ${site.latitude?.toFixed(5)},${site.longitude?.toFixed(5)} | Vous: ${latitude.toFixed(5)},${longitude.toFixed(5)}]`,
+        `Hors périmètre de "${site.name}" : vous êtes à ${distanceRounded}m du lieu (rayon autorisé: ${site.geofenceRadius}m). Rapprochez-vous d'environ ${missingMeters}m. [Lieu: ${site.latitude?.toFixed(5)},${site.longitude?.toFixed(5)} | Vous: ${latitude.toFixed(5)},${longitude.toFixed(5)}]`,
       );
     }
   }
@@ -314,7 +314,7 @@ export async function kioskClock(
   const employee = await prisma.employee.findFirst({
     where: { companyId, kioskPin: pin, siteId, isActive: true },
   });
-  if (!employee) throw new Error("PIN invalide ou employé non trouvé sur ce site");
+  if (!employee) throw new Error("PIN invalide ou employé non trouvé sur ce lieu de travail");
 
   return clockAction({
     employeeId: employee.id,

@@ -197,7 +197,7 @@ export default function EditSchedulePage() {
       },
       {
         id: "site",
-        header: "Site",
+        header: "Lieu",
         cell: ({ row }) => row.original.employee.site?.name ?? "—",
       },
       {

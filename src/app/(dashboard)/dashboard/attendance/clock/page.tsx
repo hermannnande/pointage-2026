@@ -99,7 +99,7 @@ function requestSingleGeoPosition(): Promise<{ data: { latitude: number; longitu
       (err) => {
         let msg = "Erreur inconnue.";
         if (err.code === 1) {
-          msg = "Permission refusée. Vous devez autoriser la localisation dans les paramètres de votre navigateur (Chrome/Safari) pour ce site.";
+          msg = "Permission refusée. Vous devez autoriser la localisation dans les paramètres de votre navigateur (Chrome/Safari) pour cette page.";
         } else if (err.code === 2) {
           msg = "Position introuvable. Assurez-vous que le GPS est activé sur votre téléphone.";
         } else if (err.code === 3) {

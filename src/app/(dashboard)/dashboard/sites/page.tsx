@@ -25,7 +25,7 @@ export default function SitesPage() {
       const data = await getSitesAction();
       setSites(data);
     } catch {
-      toast.error("Impossible de charger les sites");
+      toast.error("Impossible de charger les lieux de travail");
       setSites([]);
     } finally {
       setLoading(false);
@@ -40,14 +40,14 @@ export default function SitesPage() {
     async (id: string, name: string) => {
       if (
         !window.confirm(
-          `Supprimer le site « ${name} » ? Cette action est irréversible.`,
+          `Supprimer le lieu de travail « ${name} » ? Cette action est irréversible.`,
         )
       ) {
         return;
       }
       const result = await deleteSiteAction(id);
       if (result.success) {
-        toast.success("Site supprimé");
+        toast.success("Lieu de travail supprimé");
         void loadSites();
       } else {
         toast.error(result.error ?? "Échec de la suppression");
@@ -124,13 +124,13 @@ export default function SitesPage() {
   return (
     <>
       <PageHeader
-        title="Sites"
+        title="Lieux de travail"
         description="Définissez les lieux autorisés pour le pointage de vos employés : boutique, bureau, atelier..."
       >
         <Button asChild>
           <Link href="/dashboard/sites/new">
             <Plus className="h-4 w-4" />
-            Nouveau site
+            Nouveau lieu
           </Link>
         </Button>
       </PageHeader>
@@ -140,7 +140,7 @@ export default function SitesPage() {
         <DataTable
           columns={columns}
           data={sites}
-          emptyMessage="Ajoutez un site pour définir où vos employés peuvent pointer."
+          emptyMessage="Ajoutez un lieu de travail pour définir où vos employés peuvent pointer."
         />
       )}
     </>

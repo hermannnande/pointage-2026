@@ -84,7 +84,7 @@ export default function NewEmployeePage() {
         }
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger les sites");
+          toast.error("Impossible de charger les lieux de travail");
           setSites([]);
         }
       } finally {
@@ -101,8 +101,8 @@ export default function NewEmployeePage() {
     setError(null);
 
     if (siteId === EMPTY_SITE || !siteId) {
-      setError("Veuillez sélectionner un site.");
-      toast.error("Un site est obligatoire pour créer un employé");
+      setError("Veuillez sélectionner un lieu de travail.");
+      toast.error("Un lieu de travail est obligatoire pour créer un employé");
       return;
     }
 
@@ -345,18 +345,18 @@ export default function NewEmployeePage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label>Site *</Label>
+                <Label>Lieu de travail *</Label>
                 <Select
                   value={siteId}
                   onValueChange={(v) => setSiteId(v || EMPTY_SITE)}
                   disabled={sitesLoading}
                 >
                   <SelectTrigger className={`w-full ${siteId === EMPTY_SITE ? "border-destructive" : ""}`}>
-                    <SelectValue placeholder="Choisir un site" />
+                    <SelectValue placeholder="Choisir un lieu" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={EMPTY_SITE} disabled>
-                      — Sélectionnez un site —
+                      — Sélectionnez un lieu —
                     </SelectItem>
                     {sites.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
@@ -366,7 +366,7 @@ export default function NewEmployeePage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Obligatoire — L&apos;employé utilisera le code du site pour se connecter.
+                  Obligatoire — L&apos;employé utilisera le code du lieu pour se connecter.
                 </p>
               </div>
               <div className="grid gap-2">

@@ -49,7 +49,7 @@ export async function employeeLoginAction(input: LoginInput): Promise<LoginResul
     }
 
     if (!employee.site) {
-      return { success: false, error: "Aucun site assigné à votre compte. Contactez votre responsable." };
+      return { success: false, error: "Aucun lieu de travail assigné à votre compte. Contactez votre responsable." };
     }
 
     const token = createSessionToken({

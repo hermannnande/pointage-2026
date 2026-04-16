@@ -138,7 +138,7 @@ export default function ReportsPage() {
         if (!cancelled) setSites(data);
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger les sites");
+          toast.error("Impossible de charger les lieux de travail");
           setSites([]);
         }
       } finally {
@@ -264,7 +264,7 @@ export default function ReportsPage() {
       },
       {
         id: "site",
-        header: "Site",
+        header: "Lieu",
         cell: ({ row }) => row.original.site ?? "—",
       },
       {
@@ -315,7 +315,7 @@ export default function ReportsPage() {
       },
       {
         id: "site",
-        header: "Site",
+        header: "Lieu",
         cell: ({ row }) => row.original.site,
       },
       {
@@ -351,7 +351,7 @@ export default function ReportsPage() {
       },
       {
         id: "site",
-        header: "Site",
+        header: "Lieu",
         cell: ({ row }) => row.original.site,
       },
     ],
@@ -462,14 +462,14 @@ export default function ReportsPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Site</Label>
+              <Label>Lieu</Label>
               <Select
                 value={siteFilter}
                 onValueChange={(v) => setSiteFilter(v || ALL_SITES)}
                 disabled={buttonsDisabled}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Tous les sites" />
+                  <SelectValue placeholder="Tous les lieux" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL_SITES}>Tous</SelectItem>

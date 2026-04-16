@@ -39,7 +39,7 @@ export const onboardingCompanySchema = z.object({
 export const onboardingSiteSchema = z.object({
   siteName: z
     .string()
-    .min(2, "Le nom du site doit contenir au moins 2 caractères")
+    .min(2, "Le nom du lieu doit contenir au moins 2 caractères")
     .max(100, "Le nom est trop long"),
   address: z.string().optional(),
   city: z.string().optional(),

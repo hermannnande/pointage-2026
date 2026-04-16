@@ -69,7 +69,7 @@ export default function KioskPage() {
         }
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger les sites");
+          toast.error("Impossible de charger les lieux de travail");
           setSites([]);
         }
       } finally {
@@ -150,7 +150,7 @@ export default function KioskPage() {
   const handleAction = async (type: ClockType) => {
     if (feedback.kind !== "idle" || submitting) return;
     if (!siteId) {
-      toast.error("Veuillez sélectionner un site");
+      toast.error("Veuillez sélectionner un lieu de travail");
       return;
     }
     if (pin.length < PIN_MIN || pin.length > PIN_MAX) {
@@ -208,7 +208,7 @@ export default function KioskPage() {
           disabled={sitesLoading || sites.length === 0}
         >
           <SelectTrigger className="w-[min(100vw-2rem,280px)] border-gray-600 bg-gray-800 text-white data-placeholder:text-gray-400">
-            <SelectValue placeholder="Choisir un site" />
+            <SelectValue placeholder="Choisir un lieu" />
           </SelectTrigger>
           <SelectContent>
             {sites.map((s) => (

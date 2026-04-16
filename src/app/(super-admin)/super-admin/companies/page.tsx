@@ -115,7 +115,7 @@ export default function CompaniesPage() {
                     <th className="px-4 py-3">Abonnement</th>
                     <th className="px-4 py-3">Plan</th>
                     <th className="px-4 py-3 text-center">Employés</th>
-                    <th className="px-4 py-3 text-center">Sites</th>
+                    <th className="px-4 py-3 text-center">Lieux</th>
                     <th className="px-4 py-3">Inscrit le</th>
                     <th className="px-4 py-3" />
                   </tr>

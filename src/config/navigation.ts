@@ -47,7 +47,7 @@ export const DASHBOARD_NAV: NavSection[] = [
     title: "Gestion",
     items: [
       {
-        title: "Sites",
+        title: "Lieux de travail",
         href: "/dashboard/sites",
         icon: Building2,
         permission: "sites.view",

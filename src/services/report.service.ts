@@ -134,7 +134,7 @@ export function presenceSummaryToCsvRows(
     Nom: d.name,
     Matricule: d.matricule ?? "",
     Poste: d.position ?? "",
-    Site: d.site ?? "",
+    Lieu: d.site ?? "",
     "Jours présent": d.daysPresent,
     "Jours retard": d.daysLate,
     "Jours absent": d.daysAbsent,

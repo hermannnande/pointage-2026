@@ -70,7 +70,7 @@ export async function exportPresenceCsvAction(filters: {
     ...filters,
   });
   const rows = reportService.presenceSummaryToCsvRows(data);
-  const headers = ["Nom", "Matricule", "Poste", "Site", "Jours présent", "Jours retard", "Jours absent", "Heures travaillées", "Heures sup."];
+  const headers = ["Nom", "Matricule", "Poste", "Lieu", "Jours présent", "Jours retard", "Jours absent", "Heures travaillées", "Heures sup."];
   return reportService.formatReportAsCsv(headers, rows);
 }
 

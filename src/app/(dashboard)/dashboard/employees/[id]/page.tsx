@@ -114,7 +114,7 @@ export default function EditEmployeePage() {
         if (!cancelled) setSites(data);
       } catch {
         if (!cancelled) {
-          toast.error("Impossible de charger les sites");
+          toast.error("Impossible de charger les lieux de travail");
           setSites([]);
         }
       } finally {
@@ -369,14 +369,14 @@ export default function EditEmployeePage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label>Site</Label>
+                <Label>Lieu de travail</Label>
                 <Select
                   value={siteId}
                   onValueChange={(v) => setSiteId(v || EMPTY_SITE)}
                   disabled={sitesLoading}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choisir un site" />
+                    <SelectValue placeholder="Choisir un lieu" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={EMPTY_SITE}>Non assigné</SelectItem>

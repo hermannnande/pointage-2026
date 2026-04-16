@@ -112,8 +112,8 @@ function PlaceholderImage({ config, className, priority = false }: { config: typ
 
 const features = [
   { icon: Clock, title: "Pointage instantané", description: "Un seul bouton pour pointer. Entrée, sortie, pause — en une seconde depuis n'importe quel appareil.", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  { icon: MapPin, title: "Géolocalisation & Géofence", description: "Vérification automatique que l'employé est sur le lieu de travail. Rayon configurable par site.", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-  { icon: Building2, title: "Multi-sites illimités", description: "Gérez boutiques, bureaux, ateliers et dépôts depuis un seul tableau de bord centralisé.", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  { icon: MapPin, title: "Géolocalisation & Géofence", description: "Vérification automatique que l'employé est sur le lieu de travail. Rayon configurable par lieu.", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  { icon: Building2, title: "Multi-lieux illimités", description: "Gérez boutiques, bureaux, ateliers et dépôts depuis un seul tableau de bord centralisé.", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
   { icon: BarChart3, title: "Rapports automatiques", description: "Présences, retards, absences, heures sup — tout est calculé et exportable en CSV instantanément.", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   { icon: Calendar, title: "Plannings & Shifts", description: "Horaires fixes, shifts matin/soir, modèles réutilisables. Assignez en un clic à vos équipes.", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
   { icon: Shield, title: "Sécurité de niveau bancaire", description: "Données isolées par entreprise, audit complet, chiffrement bout en bout, conformité RGPD.", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
@@ -137,7 +137,7 @@ const useCases = [
   { name: "Bureaux & PME", icon: "🏢" },
   { name: "Pharmacies", icon: "💊" },
   { name: "Écoles & Formation", icon: "🎓" },
-  { name: "Entreprises multisites", icon: "🌍" },
+  { name: "Entreprises multi-lieux", icon: "🌍" },
 ];
 
 const testimonials = [
@@ -375,7 +375,7 @@ export default function HomePage() {
                 les absences et les heures supplémentaires. Exportez tout en CSV.
               </p>
               <ul className="mt-6 space-y-3">
-                {["Synthèse de présence par employé et par site", "Rapport de retards avec détails", "Export CSV en un clic pour la paie", "Gain de 3 jours de travail par mois"].map((item) => (
+                {["Synthèse de présence par employé et par lieu", "Rapport de retards avec détails", "Export CSV en un clic pour la paie", "Gain de 3 jours de travail par mois"].map((item) => (
                   <li key={item} className="flex items-center gap-2.5 text-sm">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                     {item}
@@ -488,7 +488,7 @@ export default function HomePage() {
 
           <div className="mt-16 grid gap-8 md:grid-cols-3 md:gap-12">
             {[
-              { step: "1", icon: Fingerprint, title: "Créez votre compte", description: "Inscrivez-vous en 30 secondes. Nommez votre entreprise, ajoutez votre premier site." },
+              { step: "1", icon: Fingerprint, title: "Créez votre compte", description: "Inscrivez-vous en 30 secondes. Nommez votre entreprise, ajoutez votre premier lieu de travail." },
               { step: "2", icon: Users, title: "Ajoutez vos employés", description: "Entrez vos employés un par un ou importez-les depuis un fichier CSV." },
               { step: "3", icon: Zap, title: "Vos employés pointent", description: "Chaque employé ouvre son navigateur, appuie sur un bouton. Vous voyez tout en temps réel." },
             ].map((item, i) => (
@@ -523,7 +523,7 @@ export default function HomePage() {
               <div className="rounded-2xl border-2 border-red-200 bg-red-50/50 p-6 sm:p-8 dark:border-red-900/50 dark:bg-red-950/20">
                 <p className="mb-5 text-sm font-semibold text-red-700 dark:text-red-400">Sans OControle</p>
                 <ul className="space-y-3.5">
-                  {["Cahier de pointage perdu ou falsifié", "Aucune idée de qui est en retard", "Calcul des heures à la main", "3 jours pour préparer la paie", "Pas de visibilité sur les sites distants", "Conflits sur les heures travaillées"].map((item) => (
+                  {["Cahier de pointage perdu ou falsifié", "Aucune idée de qui est en retard", "Calcul des heures à la main", "3 jours pour préparer la paie", "Pas de visibilité sur les lieux distants", "Conflits sur les heures travaillées"].map((item) => (
                     <li key={item} className="flex items-start gap-2.5 text-sm text-red-800/80 dark:text-red-300/80"><span className="mt-0.5 text-red-500">✕</span>{item}</li>
                   ))}
                 </ul>
@@ -531,7 +531,7 @@ export default function HomePage() {
               <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 dark:border-emerald-900/50 dark:bg-emerald-950/20">
                 <p className="mb-5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">Avec OControle</p>
                 <ul className="space-y-3.5">
-                  {["Pointage digital infalsifiable", "Alertes retard en temps réel", "Heures calculées automatiquement", "Rapport de paie en 1 clic", "Tous les sites dans un seul dashboard", "Historique complet et auditable"].map((item) => (
+                  {["Pointage digital infalsifiable", "Alertes retard en temps réel", "Heures calculées automatiquement", "Rapport de paie en 1 clic", "Tous les lieux dans un seul dashboard", "Historique complet et auditable"].map((item) => (
                     <li key={item} className="flex items-start gap-2.5 text-sm text-emerald-800/80 dark:text-emerald-300/80"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />{item}</li>
                   ))}
                 </ul>

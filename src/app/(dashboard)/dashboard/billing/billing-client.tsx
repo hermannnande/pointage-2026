@@ -310,7 +310,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
                   </div>
                   <div className="rounded-xl border bg-card p-4">
                     <QuotaBar
-                      label="Sites"
+                      label="Lieux"
                       icon={Building2}
                       used={quota.sites.used}
                       max={quota.sites.max}
@@ -502,7 +502,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
             <div className="flex-1">
               <h3 className="text-lg font-bold">{ENTERPRISE_PLAN.name}</h3>
               <p className="text-sm text-muted-foreground">
-                {ENTERPRISE_PLAN.description} — Employés illimités, sites
+                {ENTERPRISE_PLAN.description} — Employés illimités, lieux
                 illimités, SSO, account manager dédié et plus encore.
               </p>
             </div>

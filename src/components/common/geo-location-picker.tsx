@@ -400,7 +400,7 @@ export function GeoLocationPicker({
     <div className="space-y-3">
       <Label>
         <Navigation className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-        Position GPS du site
+        Position GPS du lieu de travail
       </Label>
 
       {/* Position confirmée */}

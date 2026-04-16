@@ -218,7 +218,7 @@ export default function AssignSchedulePage() {
                               </span>
                               <span className="text-muted-foreground">
                                 {emp.position ?? "—"} ·{" "}
-                                {emp.site?.name ?? "Sans site"}
+                                {emp.site?.name ?? "Sans lieu"}
                               </span>
                             </span>
                           </label>

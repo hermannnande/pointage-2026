@@ -84,7 +84,7 @@ export default function SuperAdminDashboardPage() {
 
   const kpiCards = [
     { label: "Entreprises", value: fmt(kpis.totalCompanies), sub: `+${kpis.newThisMonth} ce mois`, icon: Building2, color: "text-blue-600 bg-blue-50" },
-    { label: "Employés", value: fmt(kpis.totalEmployees), sub: `${kpis.totalSites} sites`, icon: Users, color: "text-green-600 bg-green-50" },
+    { label: "Employés", value: fmt(kpis.totalEmployees), sub: `${kpis.totalSites} lieux`, icon: Users, color: "text-green-600 bg-green-50" },
     { label: "Abonnements actifs", value: fmt(kpis.activeSubs), sub: `${kpis.trialing} en essai`, icon: CreditCard, color: "text-purple-600 bg-purple-50" },
     { label: "Revenus du mois", value: fmtXOF(kpis.revenueMonth), sub: `Total: ${fmtXOF(kpis.revenueTotal)}`, icon: DollarSign, color: "text-emerald-600 bg-emerald-50" },
     { label: "Nouvelles aujourd'hui", value: fmt(kpis.newToday), sub: `${kpis.newThisWeek} cette semaine`, icon: TrendingUp, color: "text-sky-600 bg-sky-50" },
@@ -92,7 +92,7 @@ export default function SuperAdminDashboardPage() {
     { label: "Tx réussies / échouées", value: `${fmt(kpis.txSuccess)} / ${fmt(kpis.txFailed)}`, sub: "Transactions", icon: CheckCircle, color: "text-teal-600 bg-teal-50" },
     { label: "Expirés / Suspendus", value: `${fmt(kpis.expired)} / ${fmt(kpis.cancelled)}`, sub: `${kpis.pastDue} impayé(s)`, icon: AlertTriangle, color: "text-red-600 bg-red-50" },
     { label: "Actives (7j)", value: fmt(kpis.recentActiveCompanies), sub: `${kpis.inactiveCompanies} inactives`, icon: Activity, color: "text-indigo-600 bg-indigo-50" },
-    { label: "Sites créés", value: fmt(kpis.totalSites), sub: "Tous les sites", icon: MapPin, color: "text-orange-600 bg-orange-50" },
+    { label: "Lieux créés", value: fmt(kpis.totalSites), sub: "Tous les lieux", icon: MapPin, color: "text-orange-600 bg-orange-50" },
   ];
 
   return (

@@ -250,7 +250,7 @@ export default function EmployeeSpacePage() {
       setGpsStatus("denied");
       if (!silent) {
         toast.error(
-          "Accès à la localisation refusé. Autorisez la localisation pour ce site.",
+          "Accès à la localisation refusé. Autorisez la localisation pour cette page.",
           { duration: 5000 },
         );
       }
@@ -615,7 +615,7 @@ export default function EmployeeSpacePage() {
             <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2">
               <p className="text-xs font-medium text-muted-foreground">
                 <MapPin className="mr-1 inline h-3 w-3" />
-                Site : {siteInfo.name}
+                Lieu : {siteInfo.name}
                 {siteInfo.radius != null && ` · Rayon: ${siteInfo.radius}m`}
               </p>
               {siteInfo.lat != null && siteInfo.lng != null && (
@@ -625,7 +625,7 @@ export default function EmployeeSpacePage() {
                   rel="noopener noreferrer"
                   className="text-[11px] text-primary underline"
                 >
-                  Voir le site sur la carte
+                  Voir sur la carte
                 </a>
               )}
             </div>

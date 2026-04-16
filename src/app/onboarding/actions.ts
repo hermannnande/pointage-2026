@@ -107,7 +107,7 @@ export async function createSiteAction(
     return { success: true, data: { siteId: site.id } };
   } catch (err) {
     console.error("Erreur création site:", err);
-    const message = err instanceof Error ? err.message : "Erreur lors de la création du site";
+    const message = err instanceof Error ? err.message : "Erreur lors de la création du lieu de travail";
     return { success: false, error: message };
   }
 }

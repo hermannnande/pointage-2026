@@ -90,7 +90,7 @@ export async function createCompanyWithOwner(params: {
           maxSites: 3,
           features: [
             "Jusqu'à 50 employés",
-            "Jusqu'à 3 sites",
+            "Jusqu'à 3 lieux de travail",
             "Pointage entrée / sortie / pause",
             "Géolocalisation et géofence",
             "Dashboard temps réel",

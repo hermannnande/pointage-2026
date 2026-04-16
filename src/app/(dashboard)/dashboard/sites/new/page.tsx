@@ -37,7 +37,7 @@ const RADIUS_OPTIONS = [
   { value: 50, label: "50 m — Petit local / boutique" },
   { value: 100, label: "100 m — Bureau / magasin" },
   { value: 200, label: "200 m — Bâtiment / entreprise" },
-  { value: 500, label: "500 m — Grand site / campus" },
+  { value: 500, label: "500 m — Grand espace / campus" },
   { value: 1000, label: "1 km — Zone industrielle" },
 ];
 
@@ -74,7 +74,7 @@ export default function NewSitePage() {
         graceMinutes,
       });
       if (result.success) {
-        toast.success("Site créé avec succès");
+        toast.success("Lieu de travail créé avec succès");
         if (result.data?.code) {
           setCreatedCode(result.data.code);
           setCreatedName(name.trim());
@@ -91,7 +91,7 @@ export default function NewSitePage() {
 
   return (
     <>
-      <PageHeader title="Nouveau site" />
+      <PageHeader title="Nouveau lieu de travail" />
 
       {createdCode ? (
         <Card className="max-w-lg border-0 shadow-lg">
@@ -100,25 +100,25 @@ export default function NewSitePage() {
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Site créé avec succès !</h2>
+              <h2 className="text-xl font-bold text-slate-900">Lieu de travail créé avec succès !</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Le site <span className="font-semibold">{createdName}</span> a été créé.
+                Le lieu <span className="font-semibold">{createdName}</span> a été créé.
               </p>
             </div>
             <div className="w-full rounded-xl border-2 border-green-200 bg-green-50 p-5 text-center">
               <p className="text-sm text-slate-600">
-                Les employés de ce site se connecteront avec leur <strong>numéro de téléphone</strong> et leur <strong>mot de passe</strong>.
+                Les employés de ce lieu se connecteront avec leur <strong>numéro de téléphone</strong> et leur <strong>mot de passe</strong>.
               </p>
             </div>
             <Button className="mt-2 w-full" onClick={() => router.push("/dashboard/sites")}>
-              Voir tous les sites
+              Voir tous les lieux
             </Button>
           </CardContent>
         </Card>
       ) : (
       <Card className="max-w-3xl">
         <CardHeader>
-          <CardTitle>Informations du site</CardTitle>
+          <CardTitle>Informations du lieu de travail</CardTitle>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5">
@@ -254,7 +254,7 @@ export default function NewSitePage() {
                   Création…
                 </>
               ) : (
-                "Créer le site"
+                "Créer le lieu"
               )}
             </Button>
             <Button variant="outline" asChild>

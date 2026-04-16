@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         <p>Nous collectons les données suivantes dans le cadre de l&apos;utilisation de OControle :</p>
         <ul className="list-disc space-y-1.5 pl-6">
           <li><strong className="text-foreground">Informations de compte</strong> : nom, prénom, adresse email, numéro de téléphone, photo de profil.</li>
-          <li><strong className="text-foreground">Informations d&apos;entreprise</strong> : nom de l&apos;entreprise, secteur d&apos;activité, pays, ville, sites de travail.</li>
+          <li><strong className="text-foreground">Informations d&apos;entreprise</strong> : nom de l&apos;entreprise, secteur d&apos;activité, pays, ville, lieux de travail.</li>
           <li><strong className="text-foreground">Données de pointage</strong> : heures d&apos;entrée et de sortie, pauses, géolocalisation (avec votre consentement).</li>
           <li><strong className="text-foreground">Données de navigation</strong> : adresse IP, type de navigateur, pages consultées.</li>
           <li><strong className="text-foreground">Données de paiement</strong> : gérées par notre prestataire de paiement sécurisé (Chariow). Nous ne stockons jamais vos données bancaires.</li>

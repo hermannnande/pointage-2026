@@ -46,7 +46,7 @@ type Step = "company" | "site" | "done";
 
 const stepsMeta = [
   { key: "company" as Step, label: "Entreprise", icon: Building2, description: "Identité de votre activité" },
-  { key: "site" as Step, label: "Premier site", icon: MapPin, description: "Lieu de travail principal" },
+  { key: "site" as Step, label: "Premier lieu", icon: MapPin, description: "Lieu de travail principal" },
   { key: "done" as Step, label: "Terminé", icon: CheckCircle2, description: "Prêt à démarrer" },
 ];
 
@@ -60,7 +60,7 @@ const RADIUS_OPTIONS = [
   { value: 50, label: "50 m — Petit local / boutique" },
   { value: 100, label: "100 m — Bureau / magasin" },
   { value: 200, label: "200 m — Bâtiment / entreprise" },
-  { value: 500, label: "500 m — Grand site / campus" },
+  { value: 500, label: "500 m — Grand espace / campus" },
   { value: 1000, label: "1 km — Zone industrielle" },
 ];
 
@@ -134,7 +134,7 @@ export default function OnboardingPage() {
       });
 
       if (!result.success) {
-        setError(result.error || "Erreur lors de la création du site");
+        setError(result.error || "Erreur lors de la création du lieu de travail");
         return;
       }
 
@@ -348,7 +348,7 @@ export default function OnboardingPage() {
                 Localisez votre lieu de travail
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                La geolocalisation permet de verifier la presence de vos employes sur site
+                La geolocalisation permet de verifier la presence de vos employes sur place
               </p>
             </div>
 
@@ -358,7 +358,7 @@ export default function OnboardingPage() {
               <div className="text-sm text-blue-800 dark:text-blue-200">
                 <p className="font-medium">Etape 2 sur 2 : Votre lieu de travail</p>
                 <p className="mt-1 text-xs leading-relaxed text-blue-600 dark:text-blue-300">
-                  C&apos;est l&apos;endroit ou vos employes pointent (boutique, bureau, atelier...). Vous pouvez utiliser la geolocalisation ou saisir l&apos;adresse manuellement. Vous pourrez toujours ajouter d&apos;autres sites plus tard.
+                  C&apos;est l&apos;endroit ou vos employes pointent (boutique, bureau, atelier...). Vous pouvez utiliser la geolocalisation ou saisir l&apos;adresse manuellement. Vous pourrez toujours ajouter d&apos;autres lieux plus tard.
                 </p>
               </div>
             </div>
@@ -372,7 +372,7 @@ export default function OnboardingPage() {
                 className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <SkipForward className="h-4 w-4" />
-                Passer, je configurerai mon site plus tard
+                Passer, je configurerai mon lieu plus tard
               </button>
             </div>
 
@@ -385,7 +385,7 @@ export default function OnboardingPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="siteName" className="text-sm font-medium">
-                  Nom du site <span className="text-destructive">*</span>
+                  Nom du lieu de travail <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="siteName"
@@ -396,7 +396,7 @@ export default function OnboardingPage() {
                   className="h-11"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Vous pourrez ajouter d&apos;autres sites plus tard
+                  Vous pourrez ajouter d&apos;autres lieux plus tard
                 </p>
               </div>
 
@@ -548,7 +548,7 @@ export default function OnboardingPage() {
               </div>
               <div className="rounded-xl border bg-muted/30 p-3 text-center">
                 <MapPin className="mx-auto h-5 w-5 text-muted-foreground" />
-                <p className="mt-1.5 text-xs font-medium">{siteSkipped ? "0 site" : "1 site"}</p>
+                <p className="mt-1.5 text-xs font-medium">{siteSkipped ? "0 lieu" : "1 lieu"}</p>
               </div>
               <div className="rounded-xl border bg-muted/30 p-3 text-center">
                 <Users className="mx-auto h-5 w-5 text-muted-foreground" />
@@ -560,7 +560,7 @@ export default function OnboardingPage() {
               <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                 <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-300">
-                  Pensez a configurer votre premier site depuis le tableau de bord pour activer le pointage par geolocalisation.
+                  Pensez a configurer votre premier lieu de travail depuis le tableau de bord pour activer le pointage par geolocalisation.
                 </p>
               </div>
             )}
