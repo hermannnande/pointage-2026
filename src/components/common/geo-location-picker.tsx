@@ -84,16 +84,23 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const reverseGeocodeCache = new Map<string, string>();
+
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  const cached = reverseGeocodeCache.get(key);
+  if (cached) return cached;
   try {
     const resp = await fetch(
       `/api/geocode?mode=reverse&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
     );
     if (!resp.ok) return null;
     const data = await resp.json();
-    return data.display
+    const addr = data.display
       ? (data.display as string).split(",").slice(0, 3).join(",").trim()
       : null;
+    if (addr) reverseGeocodeCache.set(key, addr);
+    return addr;
   } catch {
     return null;
   }

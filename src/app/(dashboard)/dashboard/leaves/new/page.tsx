@@ -74,7 +74,11 @@ export default function NewLeaveRequestPage() {
   const loadFormData = useCallback(async () => {
     setBootLoading(true);
     try {
-      const myId = await getMyEmployeeIdAction();
+      const [myId, types] = await Promise.all([
+        getMyEmployeeIdAction(),
+        getLeaveTypesAction(),
+      ]);
+      setLeaveTypes(types.filter((t) => t.isActive));
       if (myId) {
         setLockedEmployeeId(myId);
         setEmployeeId(myId);
@@ -83,8 +87,6 @@ export default function NewLeaveRequestPage() {
         const emps = await getEmployeesForSelectAction();
         setEmployees(emps);
       }
-      const types = await getLeaveTypesAction();
-      setLeaveTypes(types.filter((t) => t.isActive));
     } catch {
       toast.error("Impossible de charger le formulaire");
       setEmployees([]);

@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const ONE_YEAR = 31536000;
 const ONE_WEEK = 604800;
+const ONE_DAY = 86400;
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -16,6 +17,12 @@ const nextConfig: NextConfig = {
       "recharts",
       "date-fns",
       "@supabase/supabase-js",
+      "@tanstack/react-table",
+      "react-day-picker",
+      "cmdk",
+      "react-hook-form",
+      "zod",
+      "sonner",
     ],
   },
   async headers() {
@@ -33,13 +40,13 @@ const nextConfig: NextConfig = {
       {
         source: "/icon-192.png",
         headers: [
-          { key: "Cache-Control", value: `public, max-age=${ONE_WEEK}` },
+          { key: "Cache-Control", value: `public, max-age=${ONE_YEAR}, immutable` },
         ],
       },
       {
         source: "/manifest.json",
         headers: [
-          { key: "Cache-Control", value: `public, max-age=${ONE_WEEK}` },
+          { key: "Cache-Control", value: `public, max-age=${ONE_DAY}` },
         ],
       },
     ];

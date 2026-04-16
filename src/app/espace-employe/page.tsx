@@ -270,19 +270,19 @@ export default function EmployeeSpacePage() {
     let cancelled = false;
     (async () => {
       try {
-        const s = await getEmployeeSession();
-        if (!cancelled) {
-          if (!s) {
-            router.replace("/employe");
-            return;
-          }
-          setSession(s);
-
-          const subCheck = await checkEmployeeCompanySubscriptionAction();
-          if (!cancelled && subCheck && !subCheck.isAccessible) {
-            setSubBlocked(true);
-            setSubBlockedMsg(subCheck.message);
-          }
+        const [s, subCheck] = await Promise.all([
+          getEmployeeSession(),
+          checkEmployeeCompanySubscriptionAction(),
+        ]);
+        if (cancelled) return;
+        if (!s) {
+          router.replace("/employe");
+          return;
+        }
+        setSession(s);
+        if (subCheck && !subCheck.isAccessible) {
+          setSubBlocked(true);
+          setSubBlockedMsg(subCheck.message);
         }
       } catch {
         if (!cancelled) router.replace("/employe");

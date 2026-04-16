@@ -35,6 +35,37 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/forgot-password");
+  const isResetPage = pathname.startsWith("/reset-password");
+  const isDashboardPage = pathname.startsWith("/dashboard");
+  const isOnboardingPage = pathname.startsWith("/onboarding");
+  const isEmployeeSpace = pathname.startsWith("/espace-employe");
+  const isEmployeeLogin = pathname === "/employe";
+  const isSuperAdmin = pathname.startsWith("/super-admin");
+
+  const isEmployeeCookieRoute = isEmployeeSpace || isEmployeeLogin;
+  if (isEmployeeCookieRoute) {
+    const sessionCookie = request.cookies.get("oc_employee_session");
+    if (isEmployeeSpace && !sessionCookie?.value) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/employe";
+      return NextResponse.redirect(url);
+    }
+    if (isEmployeeLogin && sessionCookie?.value) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/espace-employe";
+      return NextResponse.redirect(url);
+    }
+    supabaseResponse.headers.set("x-next-pathname", pathname);
+    return supabaseResponse;
+  }
+
+  const needsAuth = isDashboardPage || isOnboardingPage || isAuthPage || isSuperAdmin;
+  if (!needsAuth) {
+    supabaseResponse.headers.set("x-next-pathname", pathname);
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
     supabaseUrl,
     supabaseAnonKey,
@@ -60,40 +91,10 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/forgot-password");
-  const isResetPage = pathname.startsWith("/reset-password");
-  const isDashboardPage = pathname.startsWith("/dashboard");
-  const isOnboardingPage = pathname.startsWith("/onboarding");
-  const isEmployeeSpace = pathname.startsWith("/espace-employe");
-  const isEmployeeLogin = pathname === "/employe";
-  const isSuperAdmin = pathname.startsWith("/super-admin");
-
   if (isSuperAdmin) {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
-      return NextResponse.redirect(url);
-    }
-    supabaseResponse.headers.set("x-next-pathname", pathname);
-    return supabaseResponse;
-  }
-
-  if (isEmployeeSpace) {
-    const sessionCookie = request.cookies.get("oc_employee_session");
-    if (!sessionCookie?.value) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/employe";
-      return NextResponse.redirect(url);
-    }
-    supabaseResponse.headers.set("x-next-pathname", pathname);
-    return supabaseResponse;
-  }
-
-  if (isEmployeeLogin) {
-    const sessionCookie = request.cookies.get("oc_employee_session");
-    if (sessionCookie?.value) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/espace-employe";
       return NextResponse.redirect(url);
     }
     supabaseResponse.headers.set("x-next-pathname", pathname);
