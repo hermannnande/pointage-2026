@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { trackFbEvent } from "@/components/fb-pixel";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -171,6 +172,13 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function HomePage() {
+  useEffect(() => {
+    trackFbEvent("ViewContent", {
+      content_name: "Page d'accueil OControle",
+      content_category: "landing_page",
+    });
+  }, []);
+
   return (
     <>
       {/* ================================================================ */}

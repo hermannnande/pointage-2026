@@ -10,6 +10,8 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { trackFbEvent } from "@/components/fb-pixel";
+
 import { signupAction, oauthLoginAction } from "../actions";
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -50,6 +52,13 @@ export default function SignupPage() {
       setLoading(false);
       return;
     }
+
+    trackFbEvent("Purchase", {
+      value: 0,
+      currency: "XOF",
+      content_name: "Inscription OControle",
+      content_type: "signup",
+    });
 
     window.location.href = "/onboarding";
   }

@@ -305,12 +305,36 @@ export default function AttendanceHistoryPage() {
       {
         id: "clockIn",
         header: "Entrée",
-        cell: ({ row }) => fmtTime(row.original.clockIn),
+        cell: ({ row }) => {
+          const r = row.original as AttendanceRow & { clockInAddress?: string | null };
+          return (
+            <div>
+              <span>{fmtTime(r.clockIn)}</span>
+              {r.clockInAddress && (
+                <p className="truncate text-[11px] text-muted-foreground max-w-[180px]">
+                  {r.clockInAddress}
+                </p>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: "clockOut",
         header: "Sortie",
-        cell: ({ row }) => fmtTime(row.original.clockOut),
+        cell: ({ row }) => {
+          const r = row.original as AttendanceRow & { clockOutAddress?: string | null };
+          return (
+            <div>
+              <span>{fmtTime(r.clockOut)}</span>
+              {r.clockOutAddress && (
+                <p className="truncate text-[11px] text-muted-foreground max-w-[180px]">
+                  {r.clockOutAddress}
+                </p>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: "worked",

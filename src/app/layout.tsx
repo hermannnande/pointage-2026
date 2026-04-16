@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { FacebookPixel } from "@/components/fb-pixel";
 
 import "./globals.css";
 
@@ -67,6 +68,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://ubvtaviufrhajndwcmdm.supabase.co" crossOrigin="anonymous" />
       </head>
       <body className="min-h-dvh antialiased">
+        <FacebookPixel />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

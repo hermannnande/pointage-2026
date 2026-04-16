@@ -2,6 +2,25 @@ import type { AttendanceStatus, EventSource, EventType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma/client";
 
+const GOOGLE_API_KEY =
+  process.env.GOOGLE_MAPS_API_KEY ??
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
+  "";
+
+async function reverseGeocodeAddress(lat: number, lng: number): Promise<string | null> {
+  if (!GOOGLE_API_KEY) return null;
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${encodeURIComponent(GOOGLE_API_KEY)}&language=fr`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000), cache: "no-store" });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data?.status !== "OK" || !Array.isArray(data.results) || data.results.length === 0) return null;
+    return String(data.results[0]?.formatted_address ?? "").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 function todayDate(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -148,6 +167,10 @@ export async function clockAction(payload: ClockPayload) {
 
     const status: AttendanceStatus = isLate ? "LATE" : "PRESENT";
 
+    const clockInAddr = (latitude != null && longitude != null)
+      ? await reverseGeocodeAddress(latitude, longitude)
+      : null;
+
     record = await prisma.attendanceRecord.upsert({
       where: { employeeId_date: { employeeId, date: today } },
       create: {
@@ -158,6 +181,7 @@ export async function clockAction(payload: ClockPayload) {
         clockIn: now,
         clockInLat: latitude ?? null,
         clockInLng: longitude ?? null,
+        clockInAddress: clockInAddr,
         isGeofenceOk,
         isLate,
         lateMinutes,
@@ -169,6 +193,7 @@ export async function clockAction(payload: ClockPayload) {
         clockIn: now,
         clockInLat: latitude ?? null,
         clockInLng: longitude ?? null,
+        clockInAddress: clockInAddr,
         isGeofenceOk,
         isLate,
         lateMinutes,
@@ -215,12 +240,17 @@ export async function clockAction(payload: ClockPayload) {
     else if (record.isLate) status = "LATE";
     else status = "PRESENT";
 
+    const clockOutAddr = (latitude != null && longitude != null)
+      ? await reverseGeocodeAddress(latitude, longitude)
+      : null;
+
     record = await prisma.attendanceRecord.update({
       where: { id: record.id },
       data: {
         clockOut: now,
         clockOutLat: latitude ?? null,
         clockOutLng: longitude ?? null,
+        clockOutAddress: clockOutAddr,
         workedMinutes: workedMin,
         breakMinutes: totalBreakMin,
         overtimeMinutes,

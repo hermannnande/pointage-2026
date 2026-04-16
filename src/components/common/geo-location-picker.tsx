@@ -249,7 +249,7 @@ export function GeoLocationPicker({
       }
 
       await applyCoords(best.coords.latitude, best.coords.longitude, best.coords.accuracy);
-      toast.success(`Position Google Maps détectée (précision ±${roundedAccuracy}m)`);
+      toast.success(`Position détectée (précision ±${roundedAccuracy}m)`);
     } finally {
       setGeoLoading(false);
     }
@@ -267,7 +267,7 @@ export function GeoLocationPicker({
         const extracted = extractCoordsFromUrl(value);
         if (extracted && isValidCoord(extracted.lat, extracted.lng)) {
           await applyCoords(extracted.lat, extracted.lng);
-          toast.success("Coordonnées Google Maps enregistrées !");
+          toast.success("Coordonnées enregistrées !");
           return;
         }
         toast.error("Coordonnées invalides. Format attendu : 5.3364, -3.9638");
@@ -293,7 +293,7 @@ export function GeoLocationPicker({
 
         if (extracted && isValidCoord(extracted.lat, extracted.lng)) {
           await applyCoords(extracted.lat, extracted.lng);
-          toast.success("Position extraite du lien Google Maps !");
+          toast.success("Position extraite du lien !");
           return;
         }
         toast.error("Impossible d'extraire les coordonnées de ce lien.");
@@ -302,12 +302,12 @@ export function GeoLocationPicker({
 
       const results = await searchAddress(value);
       if (results.length === 0) {
-        toast.error("Aucun résultat Google Maps. Essayez avec plus de détails.");
+        toast.error("Aucun résultat trouvé. Essayez avec plus de détails.");
         return;
       }
       if (results.length === 1) {
         await applyCoords(results[0].lat, results[0].lng);
-        toast.success("Position Google Maps trouvée !");
+        toast.success("Position trouvée !");
         return;
       }
       setSearchResults(results);
@@ -320,7 +320,7 @@ export function GeoLocationPicker({
     <div className="space-y-3">
       <Label>
         <Navigation className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-        Position GPS du site (Google Maps)
+        Position GPS du site
       </Label>
 
       {/* Position confirmée */}
@@ -332,7 +332,7 @@ export function GeoLocationPicker({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                Position Google Maps enregistrée
+                Position enregistrée
               </p>
               <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
                 {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
@@ -348,7 +348,7 @@ export function GeoLocationPicker({
                 rel="noopener noreferrer"
                 className="mt-1 inline-block text-xs text-green-700 underline hover:text-green-900 dark:text-green-300"
               >
-                Vérifier sur Google Maps
+                Vérifier sur la carte
               </a>
             </div>
             <Button
@@ -384,13 +384,13 @@ export function GeoLocationPicker({
               <Navigation className="h-4 w-4" />
             )}
             {geoLoading
-              ? "Détection Google Maps en cours..."
-              : "Me localiser automatiquement (Google Maps)"}
+              ? "Détection en cours..."
+              : "Me localiser automatiquement"}
           </Button>
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">ou rechercher avec Google Maps</span>
+            <span className="text-xs text-muted-foreground">ou rechercher une adresse</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
@@ -400,7 +400,7 @@ export function GeoLocationPicker({
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Adresse, lien Google Maps, ou coordonnées GPS..."
+                placeholder="Adresse, lien carte, ou coordonnées GPS..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) =>
@@ -425,7 +425,7 @@ export function GeoLocationPicker({
           </div>
 
           <p className="text-[11px] text-muted-foreground">
-            Accepte : adresse, lien Google Maps, ou coordonnées GPS (ex: 5.336, -3.963)
+            Accepte : adresse, lien carte, ou coordonnées GPS (ex: 5.336, -3.963)
           </p>
 
           {!looksLikeUrl(input.trim()) &&
@@ -433,10 +433,10 @@ export function GeoLocationPicker({
             input.trim().length >= 2 && (
               <p className="text-[11px] text-muted-foreground">
                 {liveSearchLoading
-                  ? "Recherche Google Maps en temps réel..."
+                  ? "Recherche en cours..."
                   : searchResults.length > 0
-                    ? `${searchResults.length} résultat(s) Google Maps`
-                    : "Aucun résultat Google Maps pour le moment."}
+                    ? `${searchResults.length} résultat(s) trouvé(s)`
+                    : "Aucun résultat pour le moment."}
               </p>
             )}
 
@@ -453,7 +453,7 @@ export function GeoLocationPicker({
                   className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors hover:bg-primary/5"
                   onClick={() => {
                     void applyCoords(r.lat, r.lng);
-                    toast.success("Position Google Maps définie !");
+                    toast.success("Position définie !");
                   }}
                 >
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />

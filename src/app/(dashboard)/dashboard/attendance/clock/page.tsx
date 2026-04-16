@@ -274,9 +274,8 @@ export default function EmployeeClockPage() {
       const res = await clockInOutAction({
         employeeId,
         type,
-        ...(geo
-          ? { latitude: geo.latitude, longitude: geo.longitude }
-          : {}),
+        latitude: geo.latitude,
+        longitude: geo.longitude,
         source: "WEB",
       });
       if (!res.success) {

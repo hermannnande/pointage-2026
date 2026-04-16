@@ -530,7 +530,7 @@ export default function EmployeeSpacePage() {
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-blue-800">Détection Google Maps...</p>
+                <p className="text-sm font-medium text-blue-800">Détection en cours...</p>
                 <p className="text-xs text-blue-600">Recherche de votre position exacte</p>
               </div>
             </div>
@@ -542,7 +542,7 @@ export default function EmployeeSpacePage() {
                 <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-green-800">GPS Google Maps actif</p>
+                <p className="text-sm font-medium text-green-800">GPS actif</p>
                 <p className="truncate text-xs text-green-600">
                   {gpsAddress ?? "Position vérifiée"}
                   {gpsAccuracy != null && ` · ±${gpsAccuracy}m`}
@@ -598,7 +598,7 @@ export default function EmployeeSpacePage() {
                   rel="noopener noreferrer"
                   className="text-[11px] text-primary underline"
                 >
-                  Voir le site sur Google Maps
+                  Voir le site sur la carte
                 </a>
               )}
             </div>
