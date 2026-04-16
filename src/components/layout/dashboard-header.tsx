@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Bell, Clock, Menu, Search } from "lucide-react";
 
@@ -24,6 +26,12 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ companyName }: DashboardHeaderProps) {
   const tenant = useTenant();
   const displayName = companyName || tenant.company.name;
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const initials = tenant.user.fullName
     .split(" ")
@@ -34,7 +42,7 @@ export function DashboardHeader({ companyName }: DashboardHeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-md sm:px-6">
-      <Sheet>
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetTrigger
           render={
             <Button variant="ghost" size="icon" className="shrink-0 lg:hidden">
