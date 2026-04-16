@@ -35,6 +35,7 @@ import {
   getEmployeeSiteScheduleAction,
   checkEmployeeCompanySubscriptionAction,
 } from "./actions";
+import { EmployeeNotifications } from "@/components/employee/notification-popup";
 import { employeeLogoutAction } from "../employe/actions";
 
 import type { EmployeeSessionPayload } from "@/lib/employee-auth";
@@ -527,6 +528,9 @@ export default function EmployeeSpacePage() {
           </div>
         </div>
       </Card>
+
+      {/* Notifications employeur */}
+      <EmployeeNotifications />
 
       {/* GPS Status */}
       <Card className="rounded-2xl border-0 shadow-md">

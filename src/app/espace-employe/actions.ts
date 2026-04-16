@@ -131,6 +131,48 @@ export async function getEmployeeRecentHistoryAction() {
   });
 }
 
+export async function getEmployeeNotificationsAction() {
+  const session = await getEmployeeSession();
+  if (!session) return [];
+
+  const { getNotificationsForEmployee } = await import("@/services/employee-notification.service");
+  return getNotificationsForEmployee(session.companyId, session.employeeId, session.siteId ?? null);
+}
+
+export async function getEmployeeUnreadCountAction(): Promise<number> {
+  const session = await getEmployeeSession();
+  if (!session) return 0;
+
+  const { getUnreadCount } = await import("@/services/employee-notification.service");
+  return getUnreadCount(session.companyId, session.employeeId, session.siteId ?? null);
+}
+
+export async function markNotificationReadAction(notificationId: string): Promise<ActionResult> {
+  try {
+    const session = await getEmployeeSession();
+    if (!session) return { success: false, error: "Session expirée" };
+
+    const { markAsRead } = await import("@/services/employee-notification.service");
+    await markAsRead(notificationId, session.employeeId);
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erreur" };
+  }
+}
+
+export async function dismissNotificationAction(notificationId: string): Promise<ActionResult> {
+  try {
+    const session = await getEmployeeSession();
+    if (!session) return { success: false, error: "Session expirée" };
+
+    const { dismissNotification } = await import("@/services/employee-notification.service");
+    await dismissNotification(notificationId, session.employeeId);
+    return { success: true };
+  } catch {
+    return { success: false, error: "Erreur" };
+  }
+}
+
 export async function checkEmployeeCompanySubscriptionAction(): Promise<{
   isAccessible: boolean;
   status: string;

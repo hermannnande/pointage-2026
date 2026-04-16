@@ -54,21 +54,22 @@ model Company {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  memberships    Membership[]
-  sites          Site[]
-  departments    Department[]
-  employees      Employee[]
-  schedules      Schedule[]
-  leaveTypes     LeaveType[]
-  holidays       Holiday[]
-  subscription   Subscription?
-  billingEvents  BillingEvent[]
-  invoices       Invoice[]
-  settings       CompanySetting[]
-  imports        Import[]
-  auditLogs      AuditLog[]
-  adminNotes     AdminNote[]
-  payrollConfig  PayrollConfig?
+  memberships            Membership[]
+  sites                  Site[]
+  departments            Department[]
+  employees              Employee[]
+  schedules              Schedule[]
+  leaveTypes             LeaveType[]
+  holidays               Holiday[]
+  subscription           Subscription?
+  billingEvents          BillingEvent[]
+  invoices               Invoice[]
+  settings               CompanySetting[]
+  imports                Import[]
+  auditLogs              AuditLog[]
+  adminNotes             AdminNote[]
+  payrollConfig          PayrollConfig?
+  employeeNotifications  EmployeeNotification[]
 
   @@map("companies")
 }
@@ -160,10 +161,11 @@ model Site {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  departments       Department[]
-  employees         Employee[]
-  attendanceRecords AttendanceRecord[]
+  company               Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  departments           Department[]
+  employees             Employee[]
+  attendanceRecords     AttendanceRecord[]
+  employeeNotifications EmployeeNotification[]
 
   @@map("sites")
 }
@@ -214,15 +216,17 @@ model Employee {
   salaryType    SalaryType   @default(MONTHLY) @map("salary_type")
   absencePolicy AbsencePolicy @default(DEDUCT) @map("absence_policy")
 
-  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  site                Site?                @relation(fields: [siteId], references: [id])
-  department          Department?          @relation(fields: [departmentId], references: [id])
-  attendanceRecords   AttendanceRecord[]
-  attendanceEvents    AttendanceEvent[]
-  scheduleAssignments ScheduleAssignment[]
-  leaveRequests       LeaveRequest[]
-  documents           EmployeeDocument[]
-  payrollEntries      PayrollEntry[]
+  company                Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site                   Site?                @relation(fields: [siteId], references: [id])
+  department             Department?          @relation(fields: [departmentId], references: [id])
+  attendanceRecords      AttendanceRecord[]
+  attendanceEvents       AttendanceEvent[]
+  scheduleAssignments    ScheduleAssignment[]
+  leaveRequests          LeaveRequest[]
+  documents              EmployeeDocument[]
+  payrollEntries         PayrollEntry[]
+  employeeNotifications  EmployeeNotification[]
+  notificationReads      EmployeeNotificationRead[]
 
   @@unique([companyId, matricule])
   @@index([phone])
@@ -534,6 +538,57 @@ model Notification {
 
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+model EmployeeNotification {
+  id         String                     @id @default(cuid())
+  companyId  String                     @map("company_id")
+  employeeId String?                    @map("employee_id")
+  siteId     String?                    @map("site_id")
+  target     EmployeeNotificationTarget @default(ALL)
+  title      String
+  message    String                     @db.Text
+  priority   NotificationPriority       @default(NORMAL)
+  sentById   String                     @map("sent_by_id")
+  expiresAt  DateTime                   @map("expires_at")
+  createdAt  DateTime                   @default(now()) @map("created_at")
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  site     Site?     @relation(fields: [siteId], references: [id])
+  reads    EmployeeNotificationRead[]
+
+  @@index([companyId, createdAt])
+  @@index([employeeId])
+  @@index([siteId])
+  @@index([expiresAt])
+  @@map("employee_notifications")
+}
+
+model EmployeeNotificationRead {
+  id             String   @id @default(cuid())
+  notificationId String   @map("notification_id")
+  employeeId     String   @map("employee_id")
+  readAt         DateTime @default(now()) @map("read_at")
+  dismissedAt    DateTime? @map("dismissed_at")
+
+  notification EmployeeNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  employee     Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, employeeId])
+  @@map("employee_notification_reads")
+}
+
+enum EmployeeNotificationTarget {
+  ALL
+  SITE
+  INDIVIDUAL
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  URGENT
 }
 
 // ============================================================

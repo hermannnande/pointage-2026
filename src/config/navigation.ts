@@ -9,6 +9,7 @@ import {
   FileText,
   HelpCircle,
   LayoutDashboard,
+  Megaphone,
   Settings,
   Users,
 } from "lucide-react";
@@ -86,6 +87,16 @@ export const DASHBOARD_NAV: NavSection[] = [
         href: "/dashboard/payroll",
         icon: Banknote,
         permission: "payroll.view",
+      },
+    ],
+  },
+  {
+    title: "Communication",
+    items: [
+      {
+        title: "Notifications",
+        href: "/dashboard/notifications",
+        icon: Megaphone,
       },
     ],
   },
