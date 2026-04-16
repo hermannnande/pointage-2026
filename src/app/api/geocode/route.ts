@@ -39,34 +39,27 @@ async function placeDetails(placeId: string): Promise<GeocodeResult | null> {
 }
 
 async function googleSearch(query: string): Promise<GeocodeResult[]> {
-  const predictions = await placesAutocomplete(query);
-  if (predictions.length === 0) {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${encodeURIComponent(GOOGLE_API_KEY)}&language=fr`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(8000), cache: "no-store" });
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    if (data?.status !== "OK" || !Array.isArray(data.results)) return [];
-    return data.results
-      .slice(0, 5)
-      .map(
-        (r: {
-          formatted_address?: string;
-          geometry?: { location?: { lat?: number; lng?: number } };
-        }) => ({
-          lat: Number(r.geometry?.location?.lat ?? 0),
-          lng: Number(r.geometry?.location?.lng ?? 0),
-          display: String(r.formatted_address ?? ""),
-        }),
-      )
-      .filter(
-        (r: GeocodeResult) =>
-          Number.isFinite(r.lat) && Number.isFinite(r.lng) && r.display.length > 0,
-      );
-  }
-
-  const detailsPromises = predictions.map((p) => placeDetails(p.placeId));
-  const details = await Promise.all(detailsPromises);
-  return details.filter((d): d is GeocodeResult => d !== null);
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${encodeURIComponent(GOOGLE_API_KEY)}&language=fr`;
+  const resp = await fetch(url, { signal: AbortSignal.timeout(8000), cache: "no-store" });
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  if (data?.status !== "OK" || !Array.isArray(data.results)) return [];
+  return data.results
+    .slice(0, 5)
+    .map(
+      (r: {
+        formatted_address?: string;
+        geometry?: { location?: { lat?: number; lng?: number } };
+      }) => ({
+        lat: Number(r.geometry?.location?.lat ?? 0),
+        lng: Number(r.geometry?.location?.lng ?? 0),
+        display: String(r.formatted_address ?? ""),
+      }),
+    )
+    .filter(
+      (r: GeocodeResult) =>
+        Number.isFinite(r.lat) && Number.isFinite(r.lng) && r.display.length > 0,
+    );
 }
 
 async function googleReverse(lat: number, lng: number): Promise<string | null> {
@@ -82,28 +75,45 @@ async function googleReverse(lat: number, lng: number): Promise<string | null> {
 
 export async function GET(request: NextRequest) {
   const mode = request.nextUrl.searchParams.get("mode");
-  if (mode !== "search" && mode !== "reverse") {
-    return NextResponse.json({ error: "Invalid mode" }, { status: 400 });
-  }
 
   try {
+    if (mode === "autocomplete") {
+      const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+      if (!query)
+        return NextResponse.json({ error: "Missing query" }, { status: 400 });
+      const predictions = await placesAutocomplete(query);
+      return NextResponse.json({ predictions });
+    }
+
+    if (mode === "place") {
+      const placeId = request.nextUrl.searchParams.get("place_id")?.trim() ?? "";
+      if (!placeId)
+        return NextResponse.json({ error: "Missing place_id" }, { status: 400 });
+      const result = await placeDetails(placeId);
+      if (!result)
+        return NextResponse.json({ error: "Place not found" }, { status: 404 });
+      return NextResponse.json(result);
+    }
+
     if (mode === "search") {
       const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
       if (!query)
         return NextResponse.json({ error: "Missing query" }, { status: 400 });
-
       const results = await googleSearch(query);
       return NextResponse.json({ provider: "google", results });
     }
 
-    const lat = Number(request.nextUrl.searchParams.get("lat"));
-    const lng = Number(request.nextUrl.searchParams.get("lng"));
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
+    if (mode === "reverse") {
+      const lat = Number(request.nextUrl.searchParams.get("lat"));
+      const lng = Number(request.nextUrl.searchParams.get("lng"));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
+      }
+      const display = await googleReverse(lat, lng);
+      return NextResponse.json({ provider: "google", display });
     }
 
-    const display = await googleReverse(lat, lng);
-    return NextResponse.json({ provider: "google", display });
+    return NextResponse.json({ error: "Invalid mode" }, { status: 400 });
   } catch {
     return NextResponse.json({ error: "Geocoding failed" }, { status: 500 });
   }

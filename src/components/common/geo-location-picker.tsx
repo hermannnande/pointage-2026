@@ -99,6 +99,37 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   }
 }
 
+async function searchAutocomplete(
+  query: string,
+): Promise<Array<{ placeId: string; display: string }>> {
+  try {
+    const resp = await fetch(`/api/geocode?mode=autocomplete&q=${encodeURIComponent(query)}`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    if (!Array.isArray(data?.predictions)) return [];
+    return (data.predictions as Array<{ placeId: string; display: string }>).map((p) => ({
+      placeId: String(p.placeId),
+      display: String(p.display),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function resolvePlaceId(
+  placeId: string,
+): Promise<{ lat: number; lng: number; display: string } | null> {
+  try {
+    const resp = await fetch(`/api/geocode?mode=place&place_id=${encodeURIComponent(placeId)}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!Number.isFinite(data?.lat) || !Number.isFinite(data?.lng)) return null;
+    return { lat: Number(data.lat), lng: Number(data.lng), display: String(data.display ?? "") };
+  } catch {
+    return null;
+  }
+}
+
 async function searchAddress(
   query: string,
 ): Promise<Array<{ lat: number; lng: number; display: string }>> {
@@ -129,9 +160,10 @@ export function GeoLocationPicker({
   const [processing, setProcessing] = useState(false);
   const [liveSearchLoading, setLiveSearchLoading] = useState(false);
   const [autoAccuracy, setAutoAccuracy] = useState<number | null>(null);
-  const [searchResults, setSearchResults] = useState<
-    Array<{ lat: number; lng: number; display: string }>
+  const [suggestions, setSuggestions] = useState<
+    Array<{ placeId: string; display: string }>
   >([]);
+  const [resolvingPlaceId, setResolvingPlaceId] = useState<string | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [autoFailed, setAutoFailed] = useState(false);
 
@@ -144,16 +176,16 @@ export function GeoLocationPicker({
 
     if (!value || looksLikeUrl(value) || looksLikeCoords(value) || value.length < 2) {
       setLiveSearchLoading(false);
-      setSearchResults([]);
+      setSuggestions([]);
       return;
     }
 
     setLiveSearchLoading(true);
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
-      void searchAddress(value)
+      void searchAutocomplete(value)
         .then((results) => {
-          if (!cancelled) setSearchResults(results);
+          if (!cancelled) setSuggestions(results);
         })
         .finally(() => {
           if (!cancelled) setLiveSearchLoading(false);
@@ -167,15 +199,20 @@ export function GeoLocationPicker({
   }, [input]);
 
   const applyCoords = useCallback(
-    async (lat: number, lng: number, accuracy?: number | null) => {
+    async (lat: number, lng: number, accuracy?: number | null, resolvedAddr?: string | null) => {
       onCoordsChange({ lat, lng });
       setGeoStatus("success");
       setAutoAccuracy(accuracy ?? null);
-      setSearchResults([]);
+      setSuggestions([]);
       setInput("");
+      setResolvingPlaceId(null);
       if (onAddressResolved) {
-        const addr = await reverseGeocode(lat, lng);
-        if (addr) onAddressResolved(addr);
+        if (resolvedAddr) {
+          onAddressResolved(resolvedAddr);
+        } else {
+          const addr = await reverseGeocode(lat, lng);
+          if (addr) onAddressResolved(addr);
+        }
       }
     },
     [onCoordsChange, onAddressResolved],
@@ -255,12 +292,30 @@ export function GeoLocationPicker({
     }
   }
 
+  async function handleSelectSuggestion(placeId: string, display: string) {
+    setResolvingPlaceId(placeId);
+    try {
+      const result = await resolvePlaceId(placeId);
+      if (result && isValidCoord(result.lat, result.lng)) {
+        const addr = result.display || display;
+        await applyCoords(result.lat, result.lng, null, addr.split(",").slice(0, 3).join(",").trim());
+        toast.success("Position définie !");
+      } else {
+        toast.error("Impossible de résoudre cette adresse. Réessayez.");
+      }
+    } catch {
+      toast.error("Erreur lors de la résolution. Réessayez.");
+    } finally {
+      setResolvingPlaceId(null);
+    }
+  }
+
   async function handleSubmit() {
     const value = input.trim();
     if (!value) return;
 
     setProcessing(true);
-    setSearchResults([]);
+    setSuggestions([]);
 
     try {
       if (looksLikeCoords(value)) {
@@ -300,6 +355,11 @@ export function GeoLocationPicker({
         return;
       }
 
+      if (suggestions.length > 0) {
+        void handleSelectSuggestion(suggestions[0].placeId, suggestions[0].display);
+        return;
+      }
+
       const results = await searchAddress(value);
       if (results.length === 0) {
         toast.error("Aucun résultat trouvé. Essayez avec plus de détails.");
@@ -310,7 +370,6 @@ export function GeoLocationPicker({
         toast.success("Position trouvée !");
         return;
       }
-      setSearchResults(results);
     } finally {
       setProcessing(false);
     }
@@ -434,30 +493,32 @@ export function GeoLocationPicker({
               <p className="text-[11px] text-muted-foreground">
                 {liveSearchLoading
                   ? "Recherche en cours..."
-                  : searchResults.length > 0
-                    ? `${searchResults.length} résultat(s) trouvé(s)`
+                  : suggestions.length > 0
+                    ? `${suggestions.length} suggestion(s)`
                     : "Aucun résultat pour le moment."}
               </p>
             )}
 
-          {/* Résultats de recherche */}
-          {searchResults.length > 0 && (
-            <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border bg-background p-1">
+          {/* Suggestions d'autocomplete */}
+          {suggestions.length > 0 && (
+            <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border bg-background p-1">
               <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
                 Sélectionnez le bon emplacement :
               </p>
-              {searchResults.map((r, i) => (
+              {suggestions.map((s) => (
                 <button
-                  key={i}
+                  key={s.placeId}
                   type="button"
-                  className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors hover:bg-primary/5"
-                  onClick={() => {
-                    void applyCoords(r.lat, r.lng);
-                    toast.success("Position définie !");
-                  }}
+                  disabled={resolvingPlaceId !== null}
+                  className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors hover:bg-primary/5 disabled:opacity-50"
+                  onClick={() => void handleSelectSuggestion(s.placeId, s.display)}
                 >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span className="text-xs">{r.display}</span>
+                  {resolvingPlaceId === s.placeId ? (
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" />
+                  ) : (
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  )}
+                  <span className="text-xs">{s.display}</span>
                 </button>
               ))}
             </div>
