@@ -57,14 +57,24 @@ function startGeoWatch() {
   if (typeof navigator === "undefined" || !navigator.geolocation) return;
   if (geoWatchId !== null) return;
 
-  geoWatchId = navigator.geolocation.watchPosition(
-    (pos) => {
+  const handlePos = (pos: GeolocationPosition) => {
+    if (!latestPosition || pos.coords.accuracy <= latestPosition.coords.accuracy) {
       latestPosition = pos;
-      onPositionUpdate?.(pos);
-    },
+    }
+    onPositionUpdate?.(latestPosition);
+  };
+
+  geoWatchId = navigator.geolocation.watchPosition(
+    handlePos,
     () => {},
     { enableHighAccuracy: true, maximumAge: 3_000 },
   );
+
+  navigator.geolocation.getCurrentPosition(handlePos, () => {}, {
+    enableHighAccuracy: false,
+    timeout: 5_000,
+    maximumAge: 3_000,
+  });
 }
 
 function stopGeoWatch() {
@@ -75,7 +85,11 @@ function stopGeoWatch() {
   onPositionUpdate = null;
 }
 
-function freshGeoSample(timeoutMs: number, allowCache = false): Promise<GeolocationPosition | null> {
+function singleGeoSample(
+  timeoutMs: number,
+  highAccuracy: boolean,
+  maxAge = 0,
+): Promise<GeolocationPosition | null> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       resolve(null);
@@ -84,9 +98,22 @@ function freshGeoSample(timeoutMs: number, allowCache = false): Promise<Geolocat
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve(pos),
       () => resolve(null),
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: allowCache ? 10_000 : 0 },
+      { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: maxAge },
     );
   });
+}
+
+async function freshGeoSample(timeoutMs: number, allowCache = false): Promise<GeolocationPosition | null> {
+  const maxAge = allowCache ? 10_000 : 0;
+  const high = singleGeoSample(timeoutMs, true, maxAge);
+  const low = singleGeoSample(Math.min(timeoutMs, 6_000), false, maxAge);
+
+  const [hiRes, loRes] = await Promise.all([high, low]);
+
+  if (hiRes && loRes) {
+    return hiRes.coords.accuracy <= loRes.coords.accuracy ? hiRes : loRes;
+  }
+  return hiRes ?? loRes;
 }
 
 async function getBestGeoPosition(): Promise<GeolocationPosition | null> {
@@ -94,11 +121,11 @@ async function getBestGeoPosition(): Promise<GeolocationPosition | null> {
 
   if (latestPosition) samples.push(latestPosition);
 
-  const fresh = await freshGeoSample(10_000);
+  const fresh = await freshGeoSample(8_000);
   if (fresh) samples.push(fresh);
 
-  if (samples.length > 0 && samples[0].coords.accuracy > 80) {
-    const extra = await freshGeoSample(8_000);
+  if (samples.length > 0 && samples[0].coords.accuracy > 100) {
+    const extra = await freshGeoSample(6_000);
     if (extra) samples.push(extra);
   }
 

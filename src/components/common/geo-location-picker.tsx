@@ -218,14 +218,32 @@ export function GeoLocationPicker({
     [onCoordsChange, onAddressResolved],
   );
 
-  async function getGeoSample(timeoutMs: number): Promise<GeolocationPosition> {
-    return await new Promise((resolve, reject) => {
+  function singleGeoSample(
+    timeoutMs: number,
+    highAccuracy: boolean,
+  ): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
         (position) => resolve(position),
         (err) => reject(err),
-        { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 },
+        { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: 0 },
       );
     });
+  }
+
+  async function getGeoSample(timeoutMs: number): Promise<GeolocationPosition> {
+    const high = singleGeoSample(timeoutMs, true).catch(() => null);
+    const low = singleGeoSample(Math.min(timeoutMs, 6_000), false).catch(() => null);
+
+    const [hiRes, loRes] = await Promise.all([high, low]);
+
+    if (hiRes && loRes) {
+      return hiRes.coords.accuracy <= loRes.coords.accuracy ? hiRes : loRes;
+    }
+    if (hiRes) return hiRes;
+    if (loRes) return loRes;
+
+    return singleGeoSample(timeoutMs, true);
   }
 
   async function requestGeolocation() {
@@ -240,15 +258,18 @@ export function GeoLocationPicker({
       const samples: GeolocationPosition[] = [];
       let lastErr: GeolocationPositionError | null = null;
 
-      for (let i = 0; i < 5; i += 1) {
+      const MAX_ATTEMPTS = 3;
+      const GOOD_ACCURACY = 100;
+
+      for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
         try {
-          const sample = await getGeoSample(i === 0 ? 15_000 : 10_000);
+          const sample = await getGeoSample(i === 0 ? 10_000 : 8_000);
           samples.push(sample);
-          if (sample.coords.accuracy <= 50) break;
+          if (sample.coords.accuracy <= GOOD_ACCURACY) break;
         } catch (err) {
           lastErr = err as GeolocationPositionError;
         }
-        if (i < 4) await sleep(1200);
+        if (i < MAX_ATTEMPTS - 1) await sleep(800);
       }
 
       if (samples.length === 0) {
@@ -279,9 +300,9 @@ export function GeoLocationPicker({
 
       const roundedAccuracy = Math.round(best.coords.accuracy);
 
-      if (best.coords.accuracy > 50) {
+      if (best.coords.accuracy > 200) {
         toast.warning(
-          `Position approximative (±${roundedAccuracy}m). Coordonnées acceptées. Relancez pour plus de précision.`,
+          `Position approximative (±${roundedAccuracy}m). Coordonnées acceptées. Affinez avec la recherche si besoin.`,
         );
       }
 
