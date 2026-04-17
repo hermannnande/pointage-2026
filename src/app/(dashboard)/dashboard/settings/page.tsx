@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { PhoneInput } from "@/components/common/phone-input";
+
 import { updateCompanyAction } from "./actions";
 
 const AFRICAN_COUNTRIES = [
@@ -91,6 +93,7 @@ export default function SettingsPage() {
 
   const [name, setName] = useState(company.name);
   const [email, setEmail] = useState(company.email || "");
+  const [phone, setPhone] = useState(company.phone || "");
   const [sector, setSector] = useState(company.sector || "");
   const [country, setCountry] = useState(company.country);
   const [city, setCity] = useState(company.city || "");
@@ -100,6 +103,7 @@ export default function SettingsPage() {
   function handleCancel() {
     setName(company.name);
     setEmail(company.email || "");
+    setPhone(company.phone || "");
     setSector(company.sector || "");
     setCountry(company.country);
     setCity(company.city || "");
@@ -112,7 +116,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const result = await updateCompanyAction({
-        name, email, sector, country, city, timezone, currency,
+        name, email, phone, sector, country, city, timezone, currency,
       });
       if (result.success) {
         toast.success("Paramètres mis à jour avec succès");
@@ -178,6 +182,18 @@ export default function SettingsPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="contact@entreprise.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Téléphone</Label>
+                    <PhoneInput
+                      id="phone"
+                      value={phone}
+                      onChange={setPhone}
+                      defaultCountry={country || "CI"}
                     />
                   </div>
                 </div>
@@ -285,6 +301,7 @@ export default function SettingsPage() {
                   {[
                     { label: "Nom de l'entreprise", value: company.name },
                     { label: "E-mail", value: company.email || "—" },
+                    { label: "Téléphone", value: company.phone || "—" },
                     { label: "Secteur", value: SECTOR_LABELS[company.sector || ""] || company.sector || "—" },
                     { label: "Pays", value: COUNTRY_LABELS[company.country] || company.country || "—" },
                     { label: "Ville", value: company.city || "—" },

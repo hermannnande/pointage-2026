@@ -1,4 +1,5 @@
-import { APP_URL } from "@/lib/constants";
+import { APP_URL, DEFAULT_COUNTRY } from "@/lib/constants";
+import { getCountryFromPhone, getLocalPhoneNumber } from "@/lib/phone-country";
 
 const CHARIOW_API_URL =
   process.env.CHARIOW_API_URL || "https://api.chariow.com/v1";
@@ -55,17 +56,26 @@ interface ChariowCheckoutParams {
   customerEmail: string;
   customerName: string;
   customerPhone?: string;
+  /** Téléphone de l'entreprise utilisé en fallback si le user n'en a pas */
+  companyPhone?: string | null;
+  /**
+   * Code pays ISO 3166-1 alpha-2 (CI, SN, CM, FR, …).
+   * Si fourni, Chariow pré-remplit le pays au checkout — pas de sélection manuelle.
+   */
+  country?: string;
 }
 
-interface ChariowSale {
+export interface ChariowSale {
   id: string;
   status: string;
   amount?: {
     value: number;
     currency: string;
+    formatted?: string;
   };
   payment?: {
     status?: string;
+    checkout_url?: string;
   };
   custom_metadata?: {
     company_id?: string;
@@ -76,12 +86,29 @@ interface ChariowSale {
   product?: {
     id?: string;
     name?: string;
+    slug?: string;
   };
   customer?: {
+    id?: string;
     email?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    country?: string;
+    name?: string;
+  };
+  store?: {
+    id?: string;
+    name?: string;
+    url?: string;
+  };
+  checkout?: {
+    url?: string;
   };
   completed_at?: string | null;
   created_at?: string | null;
+  abandoned_at?: string | null;
+  failed_at?: string | null;
 }
 
 export function getPlanFromProductId(
@@ -108,6 +135,8 @@ export async function createCheckoutSession(params: ChariowCheckoutParams) {
     customerEmail,
     customerName,
     customerPhone,
+    companyPhone,
+    country,
   } = params;
 
   if (!CHARIOW_API_KEY) {
@@ -127,9 +156,18 @@ export async function createCheckoutSession(params: ChariowCheckoutParams) {
   const nameParts = customerName.trim().split(/\s+/);
   const firstName = nameParts[0] || "Client";
   const lastName = nameParts.slice(1).join(" ") || "OControle";
-  const phoneDigits = (customerPhone ?? "").replace(/\D/g, "");
-  const normalizedPhone =
-    phoneDigits.length >= 8 ? phoneDigits : "0101010101";
+
+  // Téléphone : user > entreprise > placeholder (Chariow exige TOUJOURS le bloc phone).
+  // Pour éviter "Invalid phone number" : le country_code Chariow doit
+  // OBLIGATOIREMENT correspondre au préfixe du numéro envoyé.
+  // On déduit donc le country_code depuis le téléphone lui-même, et on n'utilise
+  // le `country` (paramètre) qu'en fallback (numéro local sans préfixe).
+  const rawPhone = customerPhone?.trim() || companyPhone?.trim() || "";
+  const localDigits = getLocalPhoneNumber(rawPhone).replace(/\D/g, "");
+  const phoneNumber = localDigits.length >= 6 ? localDigits : "0000000000";
+
+  const phoneCountry = getCountryFromPhone(rawPhone);
+  const countryCode = (phoneCountry ?? country ?? DEFAULT_COUNTRY).toUpperCase();
 
   const publicAppUrl = getPublicAppUrl();
 
@@ -139,8 +177,8 @@ export async function createCheckoutSession(params: ChariowCheckoutParams) {
     first_name: firstName,
     last_name: lastName,
     phone: {
-      number: normalizedPhone,
-      country_code: "CI",
+      number: phoneNumber,
+      country_code: countryCode,
     },
     redirect_url: `${publicAppUrl}/dashboard/billing/success?sale_id={sale_id}`,
     custom_metadata: {

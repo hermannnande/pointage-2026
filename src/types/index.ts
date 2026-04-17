@@ -17,6 +17,7 @@ export interface TenantContext {
     timezone: string;
     currency: string;
     email: string | null;
+    phone: string | null;
   };
   user: {
     email: string;

@@ -3,9 +3,11 @@
 import { PERMISSIONS } from "@/config/permissions";
 
 import type { ActionResult } from "@/types";
+import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import * as billingService from "@/services/billing.service";
 import * as chariowService from "@/services/chariow.service";
+import { detectCountry } from "@/services/geo.service";
 import { getTenantContext, requirePermission } from "@/services/tenant.service";
 
 async function getContext() {
@@ -69,6 +71,10 @@ export interface BillingPageData {
     planName?: string;
     billingCycle?: "MONTHLY" | "YEARLY";
   } | null;
+  /** True si user.phone OU company.phone est défini → pas besoin de modal */
+  hasPhone: boolean;
+  /** Pays détecté côté serveur (DB > IP > téléphone > "CI") pour pré-remplir le modal */
+  detectedCountry: string;
 }
 
 async function syncCompletedSalesForCompany(companyId: string, userEmail: string) {
@@ -134,6 +140,8 @@ export async function getBillingPageData(): Promise<BillingPageData> {
       plans: [],
       invoices: [],
       pendingCheckout: null,
+      hasPhone: false,
+      detectedCountry: "CI",
     };
   }
 
@@ -141,14 +149,22 @@ export async function getBillingPageData(): Promise<BillingPageData> {
     () => undefined,
   );
 
-  const [sub, status, quota, plans, invoices, pendingCheckout] = await Promise.all([
+  const [sub, status, quota, plans, invoices, pendingCheckout, detectedCountry] = await Promise.all([
     billingService.getSubscription(ctx.companyId).catch(() => null),
     billingService.checkSubscriptionStatus(ctx.companyId).catch(() => null),
     billingService.getQuotaStatus(ctx.companyId).catch(() => null),
     billingService.getPlans().catch(() => []),
     billingService.getBillingHistory(ctx.companyId).catch(() => []),
     billingService.getPendingCheckout(ctx.companyId).catch(() => null),
+    detectCountry({
+      companyCountry: ctx.company.country,
+      phone: ctx.user.phone ?? ctx.company.phone,
+    }).catch(() => "CI"),
   ]);
+
+  const userPhoneDigits = (ctx.user.phone ?? "").replace(/\D/g, "");
+  const companyPhoneDigits = (ctx.company.phone ?? "").replace(/\D/g, "");
+  const hasPhone = userPhoneDigits.length >= 8 || companyPhoneDigits.length >= 8;
 
   return {
     subscription: sub
@@ -199,12 +215,20 @@ export async function getBillingPageData(): Promise<BillingPageData> {
           billingCycle: pendingCheckout.billingCycle,
         }
       : null,
+    hasPhone,
+    detectedCountry,
   };
 }
 
 export async function createCheckoutAction(
   planId: string,
   billingCycle: "MONTHLY" | "YEARLY",
+  options?: {
+    /** Téléphone fourni via le modal — sera sauvegardé dans le profil user */
+    phoneOverride?: string;
+    /** Code pays ISO override (modal) */
+    countryOverride?: string;
+  },
 ): Promise<ActionResult<{ checkoutUrl: string }>> {
   try {
     const ctx = await getContext();
@@ -212,6 +236,27 @@ export async function createCheckoutAction(
     requirePermission(ctx, PERMISSIONS.BILLING_MANAGE);
 
     const plan = await billingService.validatePlanChange(ctx.companyId, planId);
+
+    // Si l'utilisateur a fourni un téléphone via le modal, on le sauvegarde
+    // dans son profil pour qu'il n'ait plus à le redemander la prochaine fois.
+    let effectivePhone = ctx.user.phone;
+    if (options?.phoneOverride) {
+      const cleaned = options.phoneOverride.trim();
+      if (cleaned.replace(/\D/g, "").length >= 8) {
+        effectivePhone = cleaned;
+        await prisma.user.update({
+          where: { id: ctx.userId },
+          data: { phone: cleaned },
+        }).catch(() => undefined);
+      }
+    }
+
+    // Détection auto du pays : override modal > entreprise (DB) > IP Vercel > préfixe téléphone > "CI"
+    const country = await detectCountry({
+      override: options?.countryOverride,
+      companyCountry: ctx.company.country,
+      phone: effectivePhone ?? ctx.company.phone,
+    });
 
     const { saleId, checkoutUrl } = await chariowService.createCheckoutSession({
       companyId: ctx.companyId,
@@ -221,7 +266,9 @@ export async function createCheckoutAction(
       billingCycle,
       customerEmail: ctx.user.email,
       customerName: ctx.user.fullName,
-      customerPhone: ctx.user.phone ?? undefined,
+      customerPhone: effectivePhone ?? undefined,
+      companyPhone: ctx.company.phone,
+      country,
     });
 
     await billingService.recordPaymentInitiated({

@@ -24,6 +24,7 @@ export async function getTenantContext(
               timezone: true,
               currency: true,
               email: true,
+              phone: true,
             },
           },
           role: {
@@ -65,6 +66,7 @@ export async function getTenantContext(
       timezone: membership.company.timezone,
       currency: membership.company.currency,
       email: membership.company.email,
+      phone: membership.company.phone,
     },
     user: {
       email: user.email,

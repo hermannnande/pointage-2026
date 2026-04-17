@@ -19,6 +19,7 @@ async function getContext() {
 interface UpdateCompanyInput {
   name: string;
   email?: string;
+  phone?: string;
   sector?: string;
   country: string;
   city?: string;
@@ -36,7 +37,7 @@ export async function updateCompanyAction(
       return { success: false, error: "Seul le propriétaire peut modifier ces informations." };
     }
 
-    const { name, email, sector, country, city, timezone, currency } = input;
+    const { name, email, phone, sector, country, city, timezone, currency } = input;
 
     if (!name?.trim()) {
       return { success: false, error: "Le nom de l'entreprise est obligatoire." };
@@ -46,11 +47,17 @@ export async function updateCompanyAction(
       return { success: false, error: "Le pays est obligatoire." };
     }
 
+    const cleanedPhone = phone?.trim() || null;
+    if (cleanedPhone && cleanedPhone.replace(/\D/g, "").length < 8) {
+      return { success: false, error: "Le numéro de téléphone doit contenir au moins 8 chiffres." };
+    }
+
     const updated = await prisma.company.update({
       where: { id: ctx.companyId },
       data: {
         name: name.trim(),
         email: email?.trim() || null,
+        phone: cleanedPhone,
         sector: sector?.trim() || null,
         country: country.trim(),
         city: city?.trim() || null,
@@ -59,8 +66,20 @@ export async function updateCompanyAction(
       },
     });
 
+    // Synchronise le téléphone du propriétaire si vide,
+    // pour qu'il soit utilisé directement par Chariow (et éviter le modal).
+    if (cleanedPhone) {
+      const ownerPhoneDigits = (ctx.user.phone ?? "").replace(/\D/g, "");
+      if (ownerPhoneDigits.length < 8) {
+        await prisma.user
+          .update({ where: { id: ctx.userId }, data: { phone: cleanedPhone } })
+          .catch(() => undefined);
+      }
+    }
+
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/billing");
 
     return { success: true, data: { name: updated.name } };
   } catch {
