@@ -56,8 +56,8 @@ export default function DataDeletionPage() {
             <h3 className="text-base font-semibold text-foreground">Option 2 : Par email</h3>
             <p className="mt-3">
               Envoyez un email à{" "}
-              <a href="mailto:contact@ocontrole.com" className="text-primary hover:underline">
-                contact@ocontrole.com
+              <a href="mailto:ocontrolesupoport@gmail.com" className="text-primary hover:underline">
+                ocontrolesupoport@gmail.com
               </a>{" "}
               avec :
             </p>

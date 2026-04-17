@@ -832,7 +832,7 @@ export default function EmployeeSpacePage() {
           </Button>
           <Button variant="outline" size="sm" className="gap-2 rounded-full" asChild>
             <a
-              href="mailto:contact@ocontrole.com"
+              href="mailto:ocontrolesupoport@gmail.com"
             >
               <HelpCircle className="h-4 w-4" />
               Centre d&apos;aide

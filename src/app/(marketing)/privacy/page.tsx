@@ -98,7 +98,7 @@ export default function PrivacyPage() {
         </ul>
         <p>
           Pour exercer ces droits, contactez-nous à{" "}
-          <a href="mailto:contact@ocontrole.com" className="text-primary hover:underline">contact@ocontrole.com</a>.
+          <a href="mailto:ocontrolesupoport@gmail.com" className="text-primary hover:underline">ocontrolesupoport@gmail.com</a>.
         </p>
 
         <h2>8. Cookies</h2>
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
         <p>
           Pour toute question relative à cette politique, contactez-nous :<br />
           <strong className="text-foreground">Email</strong> :{" "}
-          <a href="mailto:contact@ocontrole.com" className="text-primary hover:underline">contact@ocontrole.com</a><br />
+          <a href="mailto:ocontrolesupoport@gmail.com" className="text-primary hover:underline">ocontrolesupoport@gmail.com</a><br />
           <strong className="text-foreground">Adresse</strong> : Abidjan, Côte d&apos;Ivoire
         </p>
       </div>
