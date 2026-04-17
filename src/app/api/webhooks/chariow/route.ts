@@ -34,10 +34,21 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-webhook-signature") ??
       "";
 
-    const isValid = chariowService.verifyWebhookSignature(body, signature);
-    if (!isValid && process.env.NODE_ENV === "production") {
-      console.error("Chariow webhook: signature invalide");
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    const hasSecret = !!process.env.CHARIOW_WEBHOOK_SECRET;
+
+    if (hasSecret) {
+      const isValid = chariowService.verifyWebhookSignature(body, signature);
+      if (!isValid) {
+        console.error("Chariow webhook: signature invalide", {
+          hasSignature: !!signature,
+          signatureLength: signature.length,
+        });
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    } else {
+      console.warn(
+        "Chariow webhook: CHARIOW_WEBHOOK_SECRET non configuré — signature non vérifiée. À configurer dès que possible.",
+      );
     }
 
     const payload: ChariowPulsePayload = JSON.parse(body);
