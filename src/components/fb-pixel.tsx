@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 
-export const FB_PIXEL_ID = "1404819328327910";
+export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || "1404819328327910";
 
 declare global {
   interface Window {
@@ -45,8 +45,12 @@ export function FacebookPixel() {
   );
 }
 
-export function trackFbEvent(eventName: string, params?: Record<string, unknown>) {
+export function trackFbEvent(
+  eventName: string,
+  params?: Record<string, unknown>,
+  options?: { eventID?: string },
+) {
   if (typeof window !== "undefined" && window.fbq) {
-    window.fbq("track", eventName, params);
+    window.fbq("track", eventName, params, options);
   }
 }

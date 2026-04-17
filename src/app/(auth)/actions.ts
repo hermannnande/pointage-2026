@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import type { ActionResult } from "@/types";
 import { createClient } from "@/lib/supabase/server";
+import { createMetaEventId, sendCompleteRegistrationToMeta } from "@/lib/meta-conversions";
 import { findOrCreateUser, updateLastLogin } from "@/services/auth.service";
 import {
   loginSchema,
@@ -19,7 +20,7 @@ import {
 
 export async function signupAction(
   input: SignupInput,
-): Promise<ActionResult<{ userId: string }>> {
+): Promise<ActionResult<{ userId: string; metaEventId: string }>> {
   const parsed = signupSchema.safeParse(input);
   if (!parsed.success) {
     const fieldErrors: Record<string, string[]> = {};
@@ -76,7 +77,31 @@ export async function signupAction(
     }
   }
 
-  return { success: true, data: { userId: user.id } };
+  const metaEventId = createMetaEventId();
+
+  try {
+    const headersList = await headers();
+    const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || headersList.get("x-real-ip");
+    const userAgent = headersList.get("user-agent");
+    const eventSourceUrl =
+      headersList.get("origin")
+      || headersList.get("referer")
+      || `${process.env.NEXT_PUBLIC_APP_URL || "https://ocontrole.com"}/signup`;
+
+    await sendCompleteRegistrationToMeta({
+      email: parsed.data.email,
+      phone: parsed.data.phone,
+      externalId: user.id,
+      clientIpAddress: ip,
+      clientUserAgent: userAgent,
+      eventSourceUrl,
+      eventId: metaEventId,
+    });
+  } catch {
+    // Non-bloquant : l'inscription doit toujours réussir même si Meta est indisponible.
+  }
+
+  return { success: true, data: { userId: user.id, metaEventId } };
 }
 
 export async function loginAction(
