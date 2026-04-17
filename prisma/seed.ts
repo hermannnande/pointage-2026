@@ -779,7 +779,7 @@ async function main() {
 
   const growthPlan = await prisma.plan.findUniqueOrThrow({ where: { slug: "growth" } });
   const periodStart = toDateOnly(now);
-  const trialEnd = addDays(now, 14);
+  const trialEnd = addDays(now, 7);
   const periodEnd = addDays(periodStart, 30);
 
   await prisma.subscription.upsert({
@@ -802,7 +802,7 @@ async function main() {
       trialEndsAt: trialEnd,
     },
   });
-  console.log("Abonnement démo : essai 14 jours (plan Growth).");
+  console.log("Abonnement démo : essai 7 jours (plan Growth).");
 
   const annualLt = leaveTypes.find((l) => l.slug === "conge-annuel")!;
   const emp4 = employees.find((e) => e.matricule === "EMP004")!;

@@ -53,12 +53,14 @@ export default function SignupPage() {
       return;
     }
 
-    trackFbEvent("Purchase", {
-      value: 0,
-      currency: "XOF",
-      content_name: "Inscription OControle",
-      content_type: "signup",
-    });
+    trackFbEvent(
+      "CompleteRegistration",
+      {
+        content_name: "Inscription OControle",
+        status: "completed",
+      },
+      { eventID: result.data?.metaEventId },
+    );
 
     window.location.href = "/onboarding";
   }
@@ -98,7 +100,7 @@ export default function SignupPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Créer un compte</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          14 jours d&apos;essai gratuit — Sans carte bancaire
+          7 jours d&apos;essai gratuit — Sans carte bancaire
         </p>
       </div>
 

@@ -53,7 +53,7 @@ const FAQ_ITEMS = [
   {
     question: "Comment fonctionne l'essai gratuit ?",
     answer:
-      "Vous bénéficiez de 14 jours d'essai gratuit avec accès complet. À l'expiration, choisissez un plan pour continuer à utiliser OControle.",
+      "Vous bénéficiez de 7 jours d'essai gratuit avec accès complet. À l'expiration, choisissez un plan pour continuer à utiliser OControle.",
   },
   {
     question: "Comment modifier les informations de mon entreprise ?",

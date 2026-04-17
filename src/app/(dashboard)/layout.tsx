@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/services/tenant.service";
 import { checkSubscriptionStatus } from "@/services/billing.service";
+import { TRIAL_DAYS } from "@/lib/constants";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -17,7 +18,7 @@ type SubStatusResult = Awaited<ReturnType<typeof checkSubscriptionStatus>>;
 const DEFAULT_SUB_STATUS: SubStatusResult = {
   isAccessible: true,
   status: "TRIALING",
-  daysRemaining: 14,
+  daysRemaining: TRIAL_DAYS,
   message: "Essai gratuit en cours",
 };
 

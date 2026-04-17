@@ -8,7 +8,7 @@ export const DEFAULT_TIMEZONE = "Africa/Abidjan";
 export const DEFAULT_LOCALE = "fr";
 export const DEFAULT_COUNTRY = "CI";
 
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 7;
 export const GRACE_PERIOD_DAYS = 7;
 export const GEOFENCE_DEFAULT_RADIUS_METERS = 200;
 export const LATE_GRACE_MINUTES = 15;

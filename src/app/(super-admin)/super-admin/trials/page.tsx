@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FlaskConical, Search, ChevronLeft, ChevronRight, AlertTriangle, Clock } from "lucide-react";
+import { FlaskConical, Search, ChevronLeft, ChevronRight, AlertTriangle, Clock, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TRIAL_DAYS } from "@/lib/constants";
 
 import { getTrialsAction } from "../actions";
 
@@ -53,9 +54,15 @@ export default function TrialsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Essais gratuits</h1>
-        <p className="text-sm text-slate-500">{total} entreprise{total > 1 ? "s" : ""} avec essai</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Essais gratuits</h1>
+          <p className="text-sm text-slate-500">{total} entreprise{total > 1 ? "s" : ""} avec essai</p>
+        </div>
+        <div className="inline-flex items-center gap-2 self-start rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 sm:self-end">
+          <Info className="h-3.5 w-3.5" />
+          Durée d&apos;essai par défaut : <span className="font-bold">{TRIAL_DAYS} jour{TRIAL_DAYS > 1 ? "s" : ""}</span>
+        </div>
       </div>
 
       <Card className="border-0 shadow-sm">

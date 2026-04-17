@@ -12,6 +12,7 @@ import {
   Crown,
   ExternalLink,
   FileText,
+  Phone,
   Rocket,
   Shield,
   Sparkles,
@@ -32,7 +33,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/common/phone-input";
 import { ENTERPRISE_PLAN, formatPrice } from "@/config/plans";
+import { getCountryFromPhone } from "@/lib/phone-country";
 
 import type { BillingPageData } from "./actions";
 import { cancelSubscriptionAction, createCheckoutAction } from "./actions";
@@ -147,21 +159,75 @@ export function BillingClient({ data }: { data: BillingPageData }) {
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
-  const { subscription, subscriptionStatus, quota, plans, invoices, pendingCheckout } = data;
+  const [phoneModal, setPhoneModal] = useState<{
+    open: boolean;
+    planId: string | null;
+    phone: string;
+    country: string;
+  }>({
+    open: false,
+    planId: null,
+    phone: "",
+    country: data.detectedCountry,
+  });
 
-  async function handleChoosePlan(planId: string) {
+  const {
+    subscription,
+    subscriptionStatus,
+    quota,
+    plans,
+    invoices,
+    pendingCheckout,
+    hasPhone,
+  } = data;
+
+  async function launchCheckout(
+    planId: string,
+    options?: { phoneOverride?: string; countryOverride?: string },
+  ) {
     setCheckoutPlanId(planId);
     try {
-      const res = await createCheckoutAction(planId, cycle);
+      const res = await createCheckoutAction(planId, cycle, options);
       if (res.success && res.data?.checkoutUrl) {
         window.location.href = res.data.checkoutUrl;
-        return;
+        return true;
       }
       toast.error(res.error ?? "Impossible de lancer le paiement");
+      return false;
     } catch {
       toast.error("Impossible de lancer le paiement");
+      return false;
     } finally {
       setCheckoutPlanId(null);
+    }
+  }
+
+  function handleChoosePlan(planId: string) {
+    if (!hasPhone) {
+      setPhoneModal({
+        open: true,
+        planId,
+        phone: "",
+        country: data.detectedCountry,
+      });
+      return;
+    }
+    void launchCheckout(planId);
+  }
+
+  async function handleSubmitPhoneModal() {
+    if (!phoneModal.planId) return;
+    const digits = phoneModal.phone.replace(/\D/g, "");
+    if (digits.length < 8) {
+      toast.error("Numéro de téléphone invalide (8 chiffres minimum).");
+      return;
+    }
+    const ok = await launchCheckout(phoneModal.planId, {
+      phoneOverride: phoneModal.phone.trim(),
+      countryOverride: phoneModal.country,
+    });
+    if (ok) {
+      setPhoneModal((p) => ({ ...p, open: false }));
     }
   }
 
@@ -344,7 +410,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
           <div>
             <h2 className="text-xl font-bold">Choisissez votre plan</h2>
             <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              Tous les plans incluent 14 jours d&apos;essai gratuit
+              Tous les plans incluent 7 jours d&apos;essai gratuit
               <a
                 href="/pricing"
                 target="_blank"
@@ -475,7 +541,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
                     size="lg"
                     variant={plan.isPopular ? "default" : "outline"}
                     disabled={isCurrent || checkoutPlanId === plan.id}
-                    onClick={() => void handleChoosePlan(plan.id)}
+                    onClick={() => handleChoosePlan(plan.id)}
                   >
                     {checkoutPlanId === plan.id ? (
                       "Redirection…"
@@ -507,7 +573,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
               </p>
             </div>
             <Button variant="outline" className="shrink-0" asChild>
-              <a href="mailto:contact@ocontrole.com">Contactez-nous</a>
+              <a href="mailto:ocontrolesupoport@gmail.com">Contactez-nous</a>
             </Button>
           </CardContent>
         </Card>
@@ -609,6 +675,69 @@ export function BillingClient({ data }: { data: BillingPageData }) {
           </div>
         )}
       </section>
+
+      <Dialog
+        open={phoneModal.open}
+        onOpenChange={(open) => setPhoneModal((p) => ({ ...p, open }))}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="size-5 text-primary" />
+              Numéro de téléphone requis
+            </DialogTitle>
+            <DialogDescription>
+              Pour finaliser votre paiement sur Chariow, nous avons besoin d&apos;un
+              numéro de téléphone. Il sera enregistré dans votre profil.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <Label htmlFor="modal-phone">Numéro de téléphone</Label>
+            <PhoneInput
+              id="modal-phone"
+              value={phoneModal.phone}
+              onChange={(v) => {
+                const detected = getCountryFromPhone(v);
+                setPhoneModal((p) => ({
+                  ...p,
+                  phone: v,
+                  country: detected || p.country,
+                }));
+              }}
+              defaultCountry={phoneModal.country}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setPhoneModal((p) => ({ ...p, open: false }))}
+              disabled={checkoutPlanId !== null}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSubmitPhoneModal()}
+              disabled={
+                checkoutPlanId !== null ||
+                phoneModal.phone.replace(/\D/g, "").length < 8
+              }
+            >
+              {checkoutPlanId !== null ? (
+                "Redirection…"
+              ) : (
+                <>
+                  Continuer vers le paiement
+                  <ArrowRight className="ml-1 size-4" />
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

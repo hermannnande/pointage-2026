@@ -537,7 +537,7 @@ export default function OnboardingPage() {
             <div className="mt-5 flex items-center gap-2 rounded-xl bg-primary/5 border border-primary/15 px-5 py-3">
               <CheckCircle2 className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-primary">
-                Essai gratuit de 14 jours activé
+                Essai gratuit de 7 jours activé
               </span>
             </div>
 

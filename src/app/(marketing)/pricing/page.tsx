@@ -23,7 +23,7 @@ export default function PricingPage() {
           Des tarifs simples et transparents
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          14 jours d&apos;essai gratuit sur tous les plans. Sans carte bancaire.
+          7 jours d&apos;essai gratuit sur tous les plans. Sans carte bancaire.
         </p>
       </div>
 
@@ -145,7 +145,7 @@ export default function PricingPage() {
               </div>
             </div>
             <Button size="lg" className="shrink-0 whitespace-nowrap" asChild>
-              <Link href="mailto:contact@ocontrole.com">Nous contacter</Link>
+              <Link href="mailto:ocontrolesupoport@gmail.com">Nous contacter</Link>
             </Button>
           </CardContent>
         </Card>
@@ -158,7 +158,7 @@ export default function PricingPage() {
           {[
             {
               q: "Dois-je entrer une carte bancaire pour l'essai gratuit ?",
-              a: "Non. L'essai de 14 jours est totalement gratuit et sans engagement. Aucune carte bancaire n'est requise.",
+              a: "Non. L'essai de 7 jours est totalement gratuit et sans engagement. Aucune carte bancaire n'est requise.",
             },
             {
               q: "Puis-je changer de plan à tout moment ?",
