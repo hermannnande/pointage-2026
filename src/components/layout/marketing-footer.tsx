@@ -2,30 +2,27 @@ import Link from "next/link";
 
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 
+import { siteConfig } from "@/config/site";
+
 const footerLinks = {
   Produit: [
-    { label: "Fonctionnalités", href: "#features" },
+    { label: "Fonctionnalités", href: "/fonctionnalites" },
     { label: "Tarifs", href: "/pricing" },
-    { label: "Mode kiosque", href: "#features" },
-    { label: "Sécurité", href: "#" },
+    { label: "Sécurité", href: "/securite" },
   ],
   Ressources: [
-    { label: "Centre d'aide", href: "#" },
-    { label: "Documentation API", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Changelog", href: "#" },
+    { label: "Centre d'aide", href: "/help" },
+    { label: "Blog", href: "/blog" },
   ],
   Entreprise: [
-    { label: "À propos", href: "#" },
-    { label: "Contact", href: "#" },
-    { label: "Partenaires", href: "#" },
-    { label: "Carrières", href: "#" },
+    { label: "À propos", href: "/about" },
+    { label: "Contact", href: "/contact" },
   ],
   Légal: [
-    { label: "Confidentialité", href: "#" },
-    { label: "CGU", href: "#" },
-    { label: "Mentions légales", href: "#" },
-    { label: "RGPD", href: "#" },
+    { label: "Confidentialité", href: "/privacy" },
+    { label: "CGU", href: "/cgu" },
+    { label: "Mentions légales", href: "/mentions-legales" },
+    { label: "RGPD", href: "/rgpd" },
   ],
 };
 
@@ -42,20 +39,27 @@ export function MarketingFooter() {
               <span className="text-lg font-bold">OControle</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              La plateforme de pointage et gestion de présence la plus simple et fiable pour les entreprises africaines.
+              La plateforme de pointage et gestion de présence la plus simple et
+              fiable pour les entreprises africaines.
             </p>
             <div className="mt-6 space-y-2.5">
-              <a href="mailto:contact@ocontrole.com" className="flex items-center gap-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+              <a
+                href={`mailto:${siteConfig.contact.email}`}
+                className="flex items-center gap-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
                 <Mail className="h-4 w-4 shrink-0" />
-                contact@ocontrole.com
+                {siteConfig.contact.email}
+              </a>
+              <a
+                href={`tel:${siteConfig.contact.phoneRaw}`}
+                className="flex items-center gap-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Phone className="h-4 w-4 shrink-0" />
+                {siteConfig.contact.phone}
               </a>
               <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                <Phone className="h-4 w-4 shrink-0" />
-                +225 07 00 00 00 00
-              </div>
-              <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 shrink-0" />
-                Abidjan, Côte d&apos;Ivoire
+                {siteConfig.contact.address}
               </div>
             </div>
           </div>
