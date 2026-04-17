@@ -140,6 +140,188 @@ export async function getTransactionKPIsAction() {
   return sa.getTransactionKPIs();
 }
 
+// ─── Billing Debug (Chariow) ─────────────────────────────────
+
+export interface ChariowSaleRow {
+  saleId: string;
+  status: string;
+  paymentStatus?: string;
+  amount: number;
+  currency: string;
+  productName: string;
+  planSlug?: string;
+  billingCycle?: string;
+  customerEmail?: string;
+  customerFirstName?: string;
+  customerLastName?: string;
+  customerPhone?: string;
+  customerCountry?: string;
+  checkoutUrl?: string;
+  createdAt?: string | null;
+  completedAt?: string | null;
+  abandonedAt?: string | null;
+  failedAt?: string | null;
+  // Données croisées avec notre DB
+  companyId?: string;
+  companyName?: string;
+  hasLocalSuccess: boolean;
+  hasLocalFailure: boolean;
+  hasLocalInitiated: boolean;
+}
+
+export async function getChariowSalesAction(limit = 100): Promise<{
+  sales: ChariowSaleRow[];
+  kpis: {
+    total: number;
+    completed: number;
+    abandoned: number;
+    failed: number;
+    awaitingPayment: number;
+    revenueTotal: number;
+    blockedNeedingHelp: number;
+  };
+}> {
+  await requireSuperAdmin();
+
+  const chariowService = await import("@/services/chariow.service");
+  const { prisma } = await import("@/lib/prisma/client");
+
+  const sales = await chariowService.listSales(limit).catch((err) => {
+    console.error("listSales failed", err);
+    return [] as Awaited<ReturnType<typeof chariowService.listSales>>;
+  });
+
+  const saleIds = sales.map((s) => s.id).filter(Boolean);
+  const companyIds = Array.from(
+    new Set(sales.map((s) => s.custom_metadata?.company_id).filter(Boolean) as string[]),
+  );
+
+  const [events, companies] = await Promise.all([
+    saleIds.length
+      ? prisma.billingEvent.findMany({
+          where: { chariowSaleId: { in: saleIds } },
+          select: { chariowSaleId: true, type: true },
+        })
+      : Promise.resolve([]),
+    companyIds.length
+      ? prisma.company.findMany({
+          where: { id: { in: companyIds } },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const eventsBySale = new Map<string, Set<string>>();
+  for (const ev of events) {
+    if (!ev.chariowSaleId) continue;
+    if (!eventsBySale.has(ev.chariowSaleId)) {
+      eventsBySale.set(ev.chariowSaleId, new Set());
+    }
+    eventsBySale.get(ev.chariowSaleId)!.add(ev.type);
+  }
+  const companyById = new Map(companies.map((c) => [c.id, c.name]));
+
+  const rows: ChariowSaleRow[] = sales.map((s) => {
+    const types = eventsBySale.get(s.id) ?? new Set<string>();
+    const companyId = s.custom_metadata?.company_id;
+    return {
+      saleId: s.id,
+      status: s.status,
+      paymentStatus: s.payment?.status,
+      amount: s.amount?.value ?? 0,
+      currency: s.amount?.currency ?? "XOF",
+      productName: s.product?.name ?? s.custom_metadata?.plan_slug ?? "—",
+      planSlug: s.custom_metadata?.plan_slug,
+      billingCycle: s.custom_metadata?.billing_cycle,
+      customerEmail: s.customer?.email,
+      customerFirstName: s.customer?.first_name,
+      customerLastName: s.customer?.last_name,
+      customerPhone: s.customer?.phone,
+      customerCountry: s.customer?.country,
+      checkoutUrl: s.checkout?.url ?? s.payment?.checkout_url,
+      createdAt: s.created_at,
+      completedAt: s.completed_at,
+      abandonedAt: s.abandoned_at,
+      failedAt: s.failed_at,
+      companyId,
+      companyName: companyId ? companyById.get(companyId) : undefined,
+      hasLocalSuccess: types.has("payment_success"),
+      hasLocalFailure: types.has("payment_failed"),
+      hasLocalInitiated: types.has("payment_initiated"),
+    };
+  });
+
+  const kpis = {
+    total: rows.length,
+    completed: rows.filter((r) => r.status === "completed").length,
+    abandoned: rows.filter((r) => r.status === "abandoned" || r.abandonedAt).length,
+    failed: rows.filter((r) => r.status === "failed" || r.failedAt).length,
+    awaitingPayment: rows.filter((r) => r.status === "awaiting_payment").length,
+    revenueTotal: rows
+      .filter((r) => r.status === "completed")
+      .reduce((sum, r) => sum + r.amount, 0),
+    // Sales bloquées : init local mais jamais finalisées côté Chariow OU paiement KO
+    blockedNeedingHelp: rows.filter(
+      (r) =>
+        r.status !== "completed" &&
+        (r.status === "abandoned" ||
+          r.status === "failed" ||
+          r.status === "awaiting_payment" ||
+          r.abandonedAt ||
+          r.failedAt),
+    ).length,
+  };
+
+  return { sales: rows, kpis };
+}
+
+export async function resyncChariowSaleAction(
+  saleId: string,
+): Promise<ActionResult<{ status: string }>> {
+  try {
+    await requireSuperAdmin();
+    const chariowService = await import("@/services/chariow.service");
+    const billingService = await import("@/services/billing.service");
+
+    const sale = await chariowService.getSale(saleId);
+    const meta = sale.custom_metadata ?? {};
+    const companyId = meta.company_id;
+    if (!companyId) {
+      return { success: false, error: "Sale sans company_id (pas créée par OControle)" };
+    }
+
+    const isSuccess = sale.status === "completed" || sale.payment?.status === "success";
+    const isFailed = sale.status === "failed" || sale.payment?.status === "failed";
+
+    if (isSuccess) {
+      const billingCycle =
+        meta.billing_cycle === "YEARLY" || meta.billing_cycle === "MONTHLY"
+          ? meta.billing_cycle
+          : undefined;
+      await billingService.handlePaymentSuccess(
+        companyId,
+        sale.amount?.value ?? 0,
+        sale.id,
+        {
+          planId: meta.plan_id,
+          planSlug: meta.plan_slug,
+          billingCycle: billingCycle as "MONTHLY" | "YEARLY" | undefined,
+        },
+      );
+      return { success: true, data: { status: "activated" } };
+    }
+
+    if (isFailed) {
+      await billingService.handlePaymentFailed(companyId, sale.id);
+      return { success: true, data: { status: "marked_failed" } };
+    }
+
+    return { success: true, data: { status: sale.status } };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Erreur" };
+  }
+}
+
 // ─── Trials ──────────────────────────────────────────────────
 
 export async function getTrialsAction(filters: sa.TrialFilter = {}) {

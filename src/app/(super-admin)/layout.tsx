@@ -15,6 +15,7 @@ import {
   Shield,
   LogOut,
   UsersRound,
+  Stethoscope,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/super-admin/employees", label: "Employés", icon: Users },
   { href: "/super-admin/subscriptions", label: "Abonnements", icon: CreditCard },
   { href: "/super-admin/transactions", label: "Transactions", icon: Receipt },
+  { href: "/super-admin/billing-debug", label: "Diagnostic paiements", icon: Stethoscope },
   { href: "/super-admin/trials", label: "Essais gratuits", icon: FlaskConical },
   { href: "/super-admin/activity", label: "Activité", icon: Activity },
   { href: "/super-admin/logs", label: "Journaux", icon: ScrollText },
