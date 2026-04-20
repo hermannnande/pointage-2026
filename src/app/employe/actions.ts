@@ -8,6 +8,7 @@ import {
   createSessionToken,
   EMPLOYEE_COOKIE_NAME,
 } from "@/lib/employee-auth";
+import { generatePhoneVariants } from "@/lib/phone-variants";
 
 interface LoginInput {
   phone: string;
@@ -27,11 +28,14 @@ export async function employeeLoginAction(input: LoginInput): Promise<LoginResul
       return { success: false, error: "Tous les champs sont obligatoires." };
     }
 
-    const normalizedPhone = phone.trim().replace(/\s+/g, "");
+    const phoneVariants = generatePhoneVariants(phone);
+    if (phoneVariants.length === 0) {
+      return { success: false, error: "Numéro de téléphone ou mot de passe incorrect." };
+    }
 
     const employee = await prisma.employee.findFirst({
       where: {
-        phone: normalizedPhone,
+        phone: { in: phoneVariants },
         isActive: true,
         passwordHash: { not: null },
       },
@@ -51,6 +55,8 @@ export async function employeeLoginAction(input: LoginInput): Promise<LoginResul
     if (!employee.site) {
       return { success: false, error: "Aucun lieu de travail assigné à votre compte. Contactez votre responsable." };
     }
+
+    const normalizedPhone = employee.phone ?? phone;
 
     const token = createSessionToken({
       employeeId: employee.id,

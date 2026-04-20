@@ -103,6 +103,42 @@ export async function markAsRead(notificationId: string, employeeId: string) {
   });
 }
 
+/**
+ * Marque comme lues TOUTES les notifications visibles par cet employé qui
+ * ne le sont pas encore. Utilisé par l'action « tout marquer comme lu » du mobile.
+ * Renvoie le nombre de notifications nouvellement marquées.
+ */
+export async function markAllAsRead(
+  companyId: string,
+  employeeId: string,
+  siteId: string | null,
+) {
+  const now = new Date();
+
+  const unread = await prisma.employeeNotification.findMany({
+    where: {
+      companyId,
+      expiresAt: { gt: now },
+      OR: [
+        { target: "ALL" },
+        { target: "INDIVIDUAL", employeeId },
+        ...(siteId ? [{ target: "SITE" as const, siteId }] : []),
+      ],
+      reads: { none: { employeeId } },
+    },
+    select: { id: true },
+  });
+
+  if (unread.length === 0) return 0;
+
+  await prisma.employeeNotificationRead.createMany({
+    data: unread.map((n) => ({ notificationId: n.id, employeeId })),
+    skipDuplicates: true,
+  });
+
+  return unread.length;
+}
+
 export async function dismissNotification(notificationId: string, employeeId: string) {
   return prisma.employeeNotificationRead.upsert({
     where: {

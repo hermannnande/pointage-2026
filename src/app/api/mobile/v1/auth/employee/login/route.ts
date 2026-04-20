@@ -5,7 +5,8 @@
  * Réponse 200 : { token, expiresAt, employee: { ... } }
  *
  * Réutilise la même logique que `employeeLoginAction` (côté web) :
- *   - Recherche employé par téléphone normalisé
+ *   - Recherche employé par téléphone normalisé (avec plusieurs variantes
+ *     pour tolérer les différents formats de saisie : +225XX..., 0XX..., XX...)
  *   - Vérification scrypt du password
  *   - Création du token HMAC (24h) via `createSessionToken()`
  *
@@ -15,6 +16,7 @@
 import { z } from "zod";
 
 import { createSessionToken, verifyPassword } from "@/lib/employee-auth";
+import { generatePhoneVariants } from "@/lib/phone-variants";
 import { prisma } from "@/lib/prisma/client";
 
 import { errors, ok } from "../../../_lib/api-response";
@@ -36,11 +38,15 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
 
   const { phone, password } = parsed.data;
-  const normalizedPhone = phone.replace(/\s+/g, "");
+  const phoneVariants = generatePhoneVariants(phone);
+
+  if (phoneVariants.length === 0) {
+    return errors.unauthorized("Numéro de téléphone ou mot de passe incorrect");
+  }
 
   const employee = await prisma.employee.findFirst({
     where: {
-      phone: normalizedPhone,
+      phone: { in: phoneVariants },
       isActive: true,
       passwordHash: { not: null },
     },
@@ -57,6 +63,8 @@ export async function POST(request: Request) {
   if (!verifyPassword(password, employee.passwordHash)) {
     return errors.unauthorized("Numéro de téléphone ou mot de passe incorrect");
   }
+
+  const normalizedPhone = employee.phone ?? phone;
 
   if (!employee.site) {
     return errors.forbidden(
