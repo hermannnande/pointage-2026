@@ -40,9 +40,31 @@ export default function DataDeletionPage() {
 
         <div className="space-y-6">
           <div className="rounded-xl border p-6">
-            <h3 className="text-base font-semibold text-foreground">Option 1 : Depuis votre compte</h3>
+            <h3 className="text-base font-semibold text-foreground">Option 1 : Depuis l&apos;application mobile Android</h3>
             <ol className="mt-3 list-decimal space-y-2 pl-6">
-              <li>Connectez-vous à votre compte OControle.</li>
+              <li>Ouvrez l&apos;application <strong className="text-foreground">OControle</strong>.</li>
+              <li>
+                Allez dans <strong className="text-foreground">Profil</strong> (employé) ou{" "}
+                <strong className="text-foreground">Réglages</strong> (administrateur).
+              </li>
+              <li>
+                Touchez <strong className="text-foreground">« À propos &amp; confidentialité »</strong>{" "}
+                puis <strong className="text-foreground">« Supprimer mon compte »</strong>.
+              </li>
+              <li>
+                L&apos;application ouvrira votre client e-mail avec une demande pré-remplie.
+                Il vous suffit de l&apos;envoyer.
+              </li>
+            </ol>
+            <p className="mt-3">
+              Nous traitons la demande sous 30 jours et vous confirmons la suppression par e-mail.
+            </p>
+          </div>
+
+          <div className="rounded-xl border p-6">
+            <h3 className="text-base font-semibold text-foreground">Option 2 : Depuis votre compte web</h3>
+            <ol className="mt-3 list-decimal space-y-2 pl-6">
+              <li>Connectez-vous à votre compte OControle sur <Link href="/" className="text-primary hover:underline">app.ocontrole.com</Link>.</li>
               <li>Allez dans <strong className="text-foreground">Paramètres</strong>.</li>
               <li>Dans la section &quot;Zone de danger&quot;, cliquez sur <strong className="text-foreground">Supprimer mon compte</strong>.</li>
               <li>Confirmez la suppression.</li>
@@ -53,7 +75,7 @@ export default function DataDeletionPage() {
           </div>
 
           <div className="rounded-xl border p-6">
-            <h3 className="text-base font-semibold text-foreground">Option 2 : Par email</h3>
+            <h3 className="text-base font-semibold text-foreground">Option 3 : Par email</h3>
             <p className="mt-3">
               Envoyez un email à{" "}
               <a href="mailto:ocontrolesupoport@gmail.com" className="text-primary hover:underline">
