@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { getSubscriptionsAction, getSubscriptionKPIsAction } from "../actions";
+import { ActivateSubscriptionDialog } from "../_components/activate-subscription-dialog";
 
 const SUB_BADGE: Record<string, { label: string; cls: string }> = {
   TRIALING: { label: "Essai", cls: "bg-blue-100 text-blue-700" },
@@ -128,6 +129,7 @@ export default function SubscriptionsPage() {
                     <th className="px-4 py-3">Début</th>
                     <th className="px-4 py-3">Fin période</th>
                     <th className="px-4 py-3">Essai fin</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -145,6 +147,15 @@ export default function SubscriptionsPage() {
                         <td className="px-4 py-2.5 text-xs text-slate-500">{s.currentPeriodStart ? new Date(s.currentPeriodStart).toLocaleDateString("fr-FR") : "—"}</td>
                         <td className="px-4 py-2.5 text-xs text-slate-500">{s.currentPeriodEnd ? new Date(s.currentPeriodEnd).toLocaleDateString("fr-FR") : "—"}</td>
                         <td className="px-4 py-2.5 text-xs text-slate-500">{s.trialEndsAt ? new Date(s.trialEndsAt).toLocaleDateString("fr-FR") : "—"}</td>
+                        <td className="px-4 py-2.5 text-right">
+                          <ActivateSubscriptionDialog
+                            companyId={s.company.id}
+                            companyName={s.company.name}
+                            defaultPlanSlug={s.plan?.slug ?? null}
+                            defaultBillingCycle={s.billingCycle}
+                            onSuccess={() => void load()}
+                          />
+                        </td>
                       </tr>
                     );
                   })}

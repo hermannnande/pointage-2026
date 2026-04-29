@@ -1,5 +1,7 @@
 "use server";
 
+import type { BillingCycle } from "@prisma/client";
+
 import { createClient } from "@/lib/supabase/server";
 import * as sa from "@/services/super-admin.service";
 import type { ActionResult } from "@/types";
@@ -89,6 +91,43 @@ export async function changePlanAction(companyId: string, planSlug: string): Pro
     const admin = await requireSuperAdmin();
     await sa.changePlanManual(companyId, planSlug, admin.id);
     return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Erreur" };
+  }
+}
+
+/**
+ * Active ou reconduit manuellement un abonnement (paiement hors-Chariow).
+ *
+ * Réservé aux super-admins. Trace l'action dans les logs avec
+ * la référence de paiement saisie.
+ */
+export async function activateSubscriptionAction(input: {
+  companyId: string;
+  planSlug: string;
+  billingCycle: BillingCycle;
+  durationMonths?: number;
+  amount?: number;
+  currency?: string;
+  paymentRef?: string;
+  note?: string;
+}): Promise<
+  ActionResult<{ periodEnd: string; planName: string; months: number }>
+> {
+  try {
+    const admin = await requireSuperAdmin();
+    const result = await sa.activateSubscriptionManually({
+      ...input,
+      actorId: admin.id,
+    });
+    return {
+      success: true,
+      data: {
+        periodEnd: result.periodEnd.toISOString(),
+        planName: result.plan.name,
+        months: result.months,
+      },
+    };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erreur" };
   }

@@ -21,6 +21,7 @@ import {
   getCompanyDetailAction, suspendCompanyAction, reactivateCompanyAction,
   extendTrialAction, changePlanAction, addNoteAction, getPlansAction,
 } from "../../actions";
+import { ActivateSubscriptionDialog } from "../../_components/activate-subscription-dialog";
 
 const SUB_BADGE: Record<string, { label: string; cls: string }> = {
   TRIALING: { label: "Essai", cls: "bg-blue-100 text-blue-700" },
@@ -177,6 +178,15 @@ export default function CompanyDetailPage() {
               Appliquer
             </Button>
           </div>
+
+          <ActivateSubscriptionDialog
+            companyId={id}
+            companyName={company.name}
+            defaultPlanSlug={sub?.plan?.slug ?? null}
+            defaultBillingCycle={sub?.billingCycle ?? null}
+            defaultCurrency={company.currency}
+            onSuccess={() => void load()}
+          />
         </CardContent>
       </Card>
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import type { SubStatus } from "@prisma/client";
+import type { BillingCycle, SubStatus } from "@prisma/client";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -371,6 +371,165 @@ export async function extendTrial(companyId: string, days: number, actorId: stri
 
   await logSuperAdminAction(actorId, "EXTEND_TRIAL", "Company", companyId, company.name, company.trialEndsAt?.toISOString() ?? "null", newEnd.toISOString(), `+${days} jours`);
   return newEnd;
+}
+
+/**
+ * Active ou reconduit manuellement un abonnement (cas paiement hors-Chariow :
+ * virement, espèces, mobile money direct, etc.).
+ *
+ * - Met le statut à ACTIVE (peu importe l'état précédent : EXPIRED, CANCELLED, TRIALING…)
+ * - Recalcule la période : début = maintenant, fin = +N mois (selon `durationMonths`)
+ *   ou par défaut 1 mois si MONTHLY / 12 mois si YEARLY
+ * - Reset trialEndsAt et gracePeriodEndsAt
+ * - Crée un BillingEvent type "manual_activation" avec amount + paymentRef en metadata
+ * - Si amount > 0 : crée aussi une Invoice marquée PAID
+ * - Trace tout dans les logs super-admin (qui a fait quoi)
+ */
+export async function activateSubscriptionManually(params: {
+  companyId: string;
+  planSlug: string;
+  billingCycle: BillingCycle;
+  durationMonths?: number;
+  amount?: number; // en plus petite unité de la devise (ex: XOF entier)
+  currency?: string;
+  paymentRef?: string;
+  note?: string;
+  actorId: string;
+}) {
+  const {
+    companyId,
+    planSlug,
+    billingCycle,
+    durationMonths,
+    amount,
+    currency,
+    paymentRef,
+    note,
+    actorId,
+  } = params;
+
+  const plan = await prisma.plan.findUnique({ where: { slug: planSlug } });
+  if (!plan) throw new Error(`Plan "${planSlug}" introuvable`);
+
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { name: true, currency: true },
+  });
+  if (!company) throw new Error("Entreprise introuvable");
+
+  // Vérifie que le plan supporte le nombre d'employés actifs (sécurité).
+  const activeEmpCount = await prisma.employee.count({
+    where: { companyId, isActive: true },
+  });
+  if (activeEmpCount > plan.maxEmployees) {
+    throw new Error(
+      `Plan ${plan.name} limité à ${plan.maxEmployees} employés. L'entreprise en a ${activeEmpCount} actifs. Choisis un plan plus grand.`,
+    );
+  }
+
+  const now = new Date();
+  const months =
+    durationMonths && durationMonths > 0
+      ? durationMonths
+      : billingCycle === "YEARLY"
+        ? 12
+        : 1;
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + months);
+
+  const existing = await prisma.subscription.findUnique({
+    where: { companyId },
+    select: { id: true, status: true, planId: true },
+  });
+
+  let subscription;
+  if (existing) {
+    subscription = await prisma.subscription.update({
+      where: { companyId },
+      data: {
+        planId: plan.id,
+        status: "ACTIVE",
+        billingCycle,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        trialEndsAt: null,
+        gracePeriodEndsAt: null,
+        cancelledAt: null,
+      },
+    });
+  } else {
+    subscription = await prisma.subscription.create({
+      data: {
+        companyId,
+        planId: plan.id,
+        status: "ACTIVE",
+        billingCycle,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
+    });
+  }
+
+  const eventCurrency = currency ?? company.currency ?? "XOF";
+
+  // Trace dans les billing events (visible côté Facturation web + Super-admin).
+  await prisma.billingEvent.create({
+    data: {
+      companyId,
+      type: "manual_activation",
+      amount: amount && amount > 0 ? amount : null,
+      currency: eventCurrency,
+      chariowEventType: "manual.super_admin",
+      metadata: {
+        planSlug,
+        planName: plan.name,
+        billingCycle,
+        durationMonths: months,
+        paymentRef: paymentRef ?? null,
+        note: note ?? null,
+        actorId,
+        previousStatus: existing?.status ?? null,
+      },
+    },
+  });
+
+  // Si un montant est saisi, on crée aussi une facture marquée payée
+  // pour que ça apparaisse dans l'historique de l'entreprise.
+  if (amount && amount > 0) {
+    const invoiceNumber = `INV-${companyId.slice(-6).toUpperCase()}-${Date.now()}`;
+    await prisma.invoice.create({
+      data: {
+        companyId,
+        number: invoiceNumber,
+        amount,
+        currency: eventCurrency,
+        status: "PAID",
+        periodStart: subscription.currentPeriodStart,
+        periodEnd: subscription.currentPeriodEnd,
+        paidAt: now,
+      },
+    });
+  }
+
+  await logSuperAdminAction(
+    actorId,
+    "ACTIVATE_SUBSCRIPTION",
+    "Subscription",
+    companyId,
+    company.name,
+    existing?.status ?? "none",
+    "ACTIVE",
+    `Plan ${plan.name} ${billingCycle} · ${months} mois${
+      amount ? ` · ${amount.toLocaleString("fr-FR")} ${eventCurrency}` : ""
+    }${paymentRef ? ` · ref ${paymentRef}` : ""}`,
+  );
+
+  return {
+    subscription,
+    plan,
+    months,
+    periodEnd,
+  };
 }
 
 export async function changePlanManual(companyId: string, planSlug: string, actorId: string) {
