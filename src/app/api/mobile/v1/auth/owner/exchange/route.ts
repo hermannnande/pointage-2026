@@ -67,13 +67,26 @@ export async function POST(request: Request) {
 
   const tenant = await getTenantContext(supabaseUid);
   if (!tenant) {
-    return errors.forbidden("Aucune entreprise associée à ce compte", );
+    // Le user Supabase existe mais n'a pas encore de Company associée
+    // (cas typique : signup mobile email + password OU sign-in Google d'un
+    // tout nouvel utilisateur). On répond 200 avec un flag explicite plutôt
+    // qu'un 403 — l'app mobile sait qu'elle doit ouvrir le navigateur sur
+    // /onboarding pour que l'utilisateur termine la création de son
+    // entreprise (le wizard web crée la Company + le membership owner).
+    return ok({
+      supabaseUid,
+      email,
+      tenant: null,
+      needsOnboarding: true,
+      onboardingUrl: "https://ocontrole.com/onboarding",
+    });
   }
 
   return ok({
     supabaseUid,
     email,
     tenant,
+    needsOnboarding: false,
   });
 }
 
