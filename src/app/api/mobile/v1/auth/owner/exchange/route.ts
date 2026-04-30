@@ -15,6 +15,7 @@
 
 import { z } from "zod";
 
+import { prisma } from "@/lib/prisma/client";
 import { getTenantContext } from "@/services/tenant.service";
 
 import { errors, ok } from "../../../_lib/api-response";
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
 
   let supabaseUid: string;
   let email: string | null = null;
+  let emailVerified = false;
   try {
     const resp = await fetch(`${url}/auth/v1/user`, {
       headers: {
@@ -55,24 +57,60 @@ export async function POST(request: Request) {
     if (!resp.ok) {
       return errors.unauthorized("Token Supabase invalide");
     }
-    const user = (await resp.json()) as { id?: string; email?: string };
+    const user = (await resp.json()) as {
+      id?: string;
+      email?: string;
+      email_confirmed_at?: string | null;
+      app_metadata?: { provider?: string; providers?: string[] };
+    };
     if (!user?.id) {
       return errors.unauthorized("Utilisateur introuvable");
     }
     supabaseUid = user.id;
     email = user.email ?? null;
+    // Email considéré vérifié si email_confirmed_at est présent OU si le
+    // provider est Google/Apple (qui vérifient l'email à la source).
+    const provider = user.app_metadata?.provider ?? "";
+    emailVerified = !!user.email_confirmed_at ||
+      provider === "google" ||
+      provider === "apple";
   } catch {
     return errors.upstreamError("Échec vérification Supabase");
   }
 
-  const tenant = await getTenantContext(supabaseUid);
+  let tenant = await getTenantContext(supabaseUid);
+
+  // ─── Auto-linking par email ────────────────────────────────
+  // Si Supabase ne reconnait pas ce supabaseUid (cas typique : un user qui
+  // s'est inscrit côté web avec email/password puis se connecte via Google
+  // sur l'APK → Supabase crée un NOUVEL utilisateur OAuth avec un autre uid),
+  // on cherche un User Prisma avec le même email + membership actif. Si
+  // trouvé ET que l'email Supabase est vérifié (Google/Apple ou confirmation
+  // par lien email), on lie automatiquement les comptes en mettant à jour
+  // `User.supabaseUid`. C'est SAFE car le seul moyen d'arriver ici avec un
+  // email vérifié est d'avoir prouvé la possession de cet email côté Supabase.
+  if (!tenant && email && emailVerified) {
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email,
+        supabaseUid: { not: supabaseUid },
+        memberships: { some: { isActive: true } },
+      },
+      select: { id: true, supabaseUid: true },
+    });
+    if (existingUser) {
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { supabaseUid },
+      });
+      tenant = await getTenantContext(supabaseUid);
+    }
+  }
+
   if (!tenant) {
-    // Le user Supabase existe mais n'a pas encore de Company associée
-    // (cas typique : signup mobile email + password OU sign-in Google d'un
-    // tout nouvel utilisateur). On répond 200 avec un flag explicite plutôt
-    // qu'un 403 — l'app mobile sait qu'elle doit ouvrir le navigateur sur
-    // /onboarding pour que l'utilisateur termine la création de son
-    // entreprise (le wizard web crée la Company + le membership owner).
+    // Pas de tenant et pas de fusion possible → flow d'onboarding.
+    // L'app mobile ouvre le wizard natif, qui appellera ensuite
+    // `/api/mobile/v1/owner/onboarding/company` pour créer la Company.
     return ok({
       supabaseUid,
       email,

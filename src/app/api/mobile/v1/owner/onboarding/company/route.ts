@@ -26,6 +26,7 @@
 
 import { z } from "zod";
 
+import { prisma } from "@/lib/prisma/client";
 import { findOrCreateUser } from "@/services/auth.service";
 import { createCompanyWithOwner } from "@/services/company.service";
 import { getTenantContext } from "@/services/tenant.service";
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
   let userEmail: string | null = null;
   let userFullName: string | null = null;
   let userPhone: string | null = null;
+  let emailVerified = false;
   try {
     const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
@@ -82,6 +84,8 @@ export async function POST(request: Request) {
     const user = (await resp.json()) as {
       id?: string;
       email?: string;
+      email_confirmed_at?: string | null;
+      app_metadata?: { provider?: string };
       user_metadata?: { full_name?: string; phone?: string };
     };
     if (!user?.id) return errors.unauthorized("Utilisateur introuvable");
@@ -89,13 +93,39 @@ export async function POST(request: Request) {
     userEmail = user.email ?? null;
     userFullName = user.user_metadata?.full_name ?? null;
     userPhone = user.user_metadata?.phone ?? null;
+    const provider = user.app_metadata?.provider ?? "";
+    emailVerified = !!user.email_confirmed_at ||
+      provider === "google" ||
+      provider === "apple";
   } catch {
     return errors.upstreamError("Échec vérification Supabase");
   }
 
   // Si la Company existe déjà (ex: l'utilisateur a relancé l'onboarding),
   // on retourne directement le tenant courant — idempotent.
-  const existingTenant = await getTenantContext(supabaseUid);
+  let existingTenant = await getTenantContext(supabaseUid);
+
+  // Auto-linking par email : couvre le cas où l'utilisateur a un compte
+  // web (créé avec email/password) et se reconnecte via Google sur l'APK
+  // (Supabase aurait alors créé un NOUVEAU user OAuth avec un autre uid).
+  if (!existingTenant && userEmail && emailVerified) {
+    const linked = await prisma.user.findFirst({
+      where: {
+        email: userEmail,
+        supabaseUid: { not: supabaseUid },
+        memberships: { some: { isActive: true } },
+      },
+      select: { id: true },
+    });
+    if (linked) {
+      await prisma.user.update({
+        where: { id: linked.id },
+        data: { supabaseUid },
+      });
+      existingTenant = await getTenantContext(supabaseUid);
+    }
+  }
+
   if (existingTenant) {
     return ok({ tenant: existingTenant, alreadyExisted: true });
   }
