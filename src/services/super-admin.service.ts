@@ -880,6 +880,564 @@ export async function getRecentActivity(limit = 30) {
   return items.slice(0, limit);
 }
 
+// ─── Usage & Engagement ─────────────────────────────────────
+//
+// Le super-admin doit pouvoir vérifier au quotidien que la plateforme
+// est réellement utilisée : entreprises actives, employés qui pointent,
+// propriétaires qui se connectent, et identifier les comptes dormants
+// pour les relancer.
+
+function daysAgo(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Vue d'ensemble de l'utilisation de la plateforme.
+ * - Compte les entités distinctes ayant produit une activité sur 1j / 7j / 30j
+ * - "Actif" = au moins 1 pointage sur la période
+ */
+export async function getUsageOverview() {
+  const today = startOfDay();
+  const since7 = daysAgo(7);
+  const since30 = daysAgo(30);
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+  const [
+    // Pointages bruts
+    clockingsToday,
+    clockingsWeek,
+    clockingsMonth,
+    // Entreprises actives (distinct)
+    dauCompaniesRows,
+    wauCompaniesRows,
+    mauCompaniesRows,
+    // Employés actifs (distinct)
+    dauEmpRows,
+    wauEmpRows,
+    mauEmpRows,
+    // Connexions propriétaires/managers (User.lastLoginAt)
+    dauOwners,
+    wauOwners,
+    mauOwners,
+    // Sessions device "live" (5 dernières minutes)
+    onlineNow,
+    // Totaux pour calcul de taux
+    totalCompanies,
+    totalEmployees,
+    totalUsers,
+    // Identifiants des companies ayant déjà pointé au moins une fois
+    everClockedCompanyIds,
+  ] = await Promise.all([
+    prisma.attendanceRecord.count({ where: { date: { gte: today } } }),
+    prisma.attendanceRecord.count({ where: { date: { gte: since7 } } }),
+    prisma.attendanceRecord.count({ where: { date: { gte: since30 } } }),
+    prisma.attendanceRecord.findMany({
+      where: { date: { gte: today } },
+      select: { companyId: true },
+      distinct: ["companyId"],
+    }),
+    prisma.attendanceRecord.findMany({
+      where: { date: { gte: since7 } },
+      select: { companyId: true },
+      distinct: ["companyId"],
+    }),
+    prisma.attendanceRecord.findMany({
+      where: { date: { gte: since30 } },
+      select: { companyId: true },
+      distinct: ["companyId"],
+    }),
+    prisma.attendanceRecord.findMany({
+      where: { date: { gte: today } },
+      select: { employeeId: true },
+      distinct: ["employeeId"],
+    }),
+    prisma.attendanceRecord.findMany({
+      where: { date: { gte: since7 } },
+      select: { employeeId: true },
+      distinct: ["employeeId"],
+    }),
+    prisma.attendanceRecord.findMany({
+      where: { date: { gte: since30 } },
+      select: { employeeId: true },
+      distinct: ["employeeId"],
+    }),
+    prisma.user.count({ where: { lastLoginAt: { gte: today } } }),
+    prisma.user.count({ where: { lastLoginAt: { gte: since7 } } }),
+    prisma.user.count({ where: { lastLoginAt: { gte: since30 } } }),
+    prisma.deviceSession.findMany({
+      where: { lastActiveAt: { gte: fiveMinAgo } },
+      select: { userId: true },
+      distinct: ["userId"],
+    }),
+    prisma.company.count(),
+    prisma.employee.count({ where: { isActive: true } }),
+    prisma.user.count({ where: { isActive: true } }),
+    prisma.attendanceRecord.findMany({
+      select: { companyId: true },
+      distinct: ["companyId"],
+    }),
+  ]);
+
+  const companiesNeverClocked = Math.max(
+    0,
+    totalCompanies - everClockedCompanyIds.length,
+  );
+
+  const dauCompanies = dauCompaniesRows.length;
+  const wauCompanies = wauCompaniesRows.length;
+  const mauCompanies = mauCompaniesRows.length;
+
+  const engagementRate =
+    totalCompanies > 0 ? Math.round((mauCompanies / totalCompanies) * 100) : 0;
+  const stickiness =
+    mauCompanies > 0 ? Math.round((dauCompanies / mauCompanies) * 100) : 0;
+
+  return {
+    // Cards principales
+    dauCompanies,
+    wauCompanies,
+    mauCompanies,
+    dauEmployees: dauEmpRows.length,
+    wauEmployees: wauEmpRows.length,
+    mauEmployees: mauEmpRows.length,
+    dauOwners,
+    wauOwners,
+    mauOwners,
+    // Volumes bruts
+    clockingsToday,
+    clockingsWeek,
+    clockingsMonth,
+    // Live & santé
+    onlineNow: onlineNow.length,
+    // Ratios
+    engagementRate, // % entreprises actives sur 30j
+    stickiness, // DAU/MAU x100 — plus c'est haut, plus l'usage est quotidien
+    // Bases de comparaison
+    totalCompanies,
+    totalEmployees,
+    totalUsers,
+    // Alerte
+    companiesNeverClocked,
+  };
+}
+
+/**
+ * Courbe d'usage quotidienne sur N jours.
+ * Renvoie pour chaque jour : nb de pointages, employés distincts, entreprises
+ * distinctes, et connexions propriétaires.
+ */
+export async function getDailyActivityTrend(days = 30) {
+  const since = daysAgo(days - 1);
+
+  const [records, logins] = await Promise.all([
+    prisma.attendanceRecord.findMany({
+      where: { date: { gte: since } },
+      select: { date: true, companyId: true, employeeId: true },
+    }),
+    prisma.user.findMany({
+      where: { lastLoginAt: { gte: since } },
+      select: { lastLoginAt: true },
+    }),
+  ]);
+
+  // Initialise tous les jours pour avoir une courbe continue (même à 0).
+  const buckets = new Map<
+    string,
+    {
+      day: string;
+      clockings: number;
+      employees: Set<string>;
+      companies: Set<string>;
+      logins: number;
+    }
+  >();
+
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    buckets.set(key, {
+      day: key,
+      clockings: 0,
+      employees: new Set(),
+      companies: new Set(),
+      logins: 0,
+    });
+  }
+
+  for (const r of records) {
+    const key = r.date.toISOString().slice(0, 10);
+    const b = buckets.get(key);
+    if (!b) continue;
+    b.clockings++;
+    b.employees.add(r.employeeId);
+    b.companies.add(r.companyId);
+  }
+
+  for (const u of logins) {
+    if (!u.lastLoginAt) continue;
+    const key = u.lastLoginAt.toISOString().slice(0, 10);
+    const b = buckets.get(key);
+    if (b) b.logins++;
+  }
+
+  return Array.from(buckets.values())
+    .map((b) => ({
+      day: b.day,
+      clockings: b.clockings,
+      employees: b.employees.size,
+      companies: b.companies.size,
+      logins: b.logins,
+    }))
+    .sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/**
+ * Heatmap de l'activité de pointage par jour de la semaine x heure.
+ * `dayOfWeek` : 0 = dimanche … 6 = samedi (convention JS Date.getDay()).
+ * Sur les 30 derniers jours.
+ */
+export async function getActivityHeatmap() {
+  const since = daysAgo(30);
+  const events = await prisma.attendanceEvent.findMany({
+    where: { timestamp: { gte: since } },
+    select: { timestamp: true },
+  });
+
+  const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+  for (const e of events) {
+    const dow = e.timestamp.getDay();
+    const hour = e.timestamp.getHours();
+    grid[dow][hour]++;
+  }
+
+  const cells: { dow: number; hour: number; count: number }[] = [];
+  for (let d = 0; d < 7; d++) {
+    for (let h = 0; h < 24; h++) {
+      cells.push({ dow: d, hour: h, count: grid[d][h] });
+    }
+  }
+  return cells;
+}
+
+/**
+ * Funnel d'onboarding sur les entreprises créées dans les N derniers jours.
+ * Mesure la proportion qui passe chaque étape clé.
+ */
+export async function getOnboardingFunnel(days = 30) {
+  const since = daysAgo(days);
+  const companies = await prisma.company.findMany({
+    where: { createdAt: { gte: since } },
+    select: {
+      id: true,
+      _count: { select: { sites: true, employees: true } },
+      subscription: { select: { status: true } },
+    },
+  });
+
+  const companyIds = companies.map((c) => c.id);
+  const clockedRows = companyIds.length
+    ? await prisma.attendanceRecord.findMany({
+        where: { companyId: { in: companyIds } },
+        select: { companyId: true },
+        distinct: ["companyId"],
+      })
+    : [];
+  const clockedSet = new Set(clockedRows.map((r) => r.companyId));
+
+  const total = companies.length;
+  let createdSite = 0;
+  let createdEmployee = 0;
+  let firstClock = 0;
+  let activeSubscription = 0;
+
+  for (const c of companies) {
+    if (c._count.sites > 0) createdSite++;
+    if (c._count.employees > 0) createdEmployee++;
+    if (clockedSet.has(c.id)) firstClock++;
+    if (c.subscription?.status === "ACTIVE") activeSubscription++;
+  }
+
+  return [
+    { step: "Inscription", count: total, pct: 100 },
+    {
+      step: "1er lieu créé",
+      count: createdSite,
+      pct: total ? Math.round((createdSite / total) * 100) : 0,
+    },
+    {
+      step: "1er employé créé",
+      count: createdEmployee,
+      pct: total ? Math.round((createdEmployee / total) * 100) : 0,
+    },
+    {
+      step: "1er pointage",
+      count: firstClock,
+      pct: total ? Math.round((firstClock / total) * 100) : 0,
+    },
+    {
+      step: "Abonnement actif",
+      count: activeSubscription,
+      pct: total ? Math.round((activeSubscription / total) * 100) : 0,
+    },
+  ];
+}
+
+/**
+ * Engagement détaillé de chaque entreprise active.
+ * Calcule pour chacune : dernier pointage, nb pointages 7j, employés actifs/total,
+ * dernière connexion d'un membre, et un statut (active / idle / dormant / never).
+ */
+export async function getCompanyEngagement(limit = 100) {
+  const since30 = daysAgo(30);
+  const since7 = daysAgo(7);
+
+  const companies = await prisma.company.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      country: true,
+      createdAt: true,
+      subscription: { select: { status: true, plan: { select: { name: true } } } },
+      _count: { select: { employees: true } },
+      employees: {
+        where: { isActive: true },
+        select: { id: true },
+      },
+      memberships: {
+        select: { user: { select: { lastLoginAt: true, fullName: true, email: true } } },
+        orderBy: { joinedAt: "asc" },
+        take: 5,
+      },
+    },
+    take: limit,
+  });
+
+  const companyIds = companies.map((c) => c.id);
+
+  const [last30, last7] = await Promise.all([
+    prisma.attendanceRecord.groupBy({
+      by: ["companyId"],
+      where: { companyId: { in: companyIds }, date: { gte: since30 } },
+      _count: { id: true },
+      _max: { date: true },
+    }),
+    prisma.attendanceRecord.groupBy({
+      by: ["companyId"],
+      where: { companyId: { in: companyIds }, date: { gte: since7 } },
+      _count: { id: true },
+    }),
+  ]);
+
+  const last30Map = new Map(
+    last30.map((r) => [r.companyId, { count: r._count.id, lastDate: r._max.date }]),
+  );
+  const last7Map = new Map(last7.map((r) => [r.companyId, r._count.id]));
+
+  const now = Date.now();
+
+  return companies
+    .map((c) => {
+      const stat30 = last30Map.get(c.id);
+      const lastClock = stat30?.lastDate ?? null;
+      const daysSince = lastClock
+        ? Math.floor((now - lastClock.getTime()) / 86400000)
+        : null;
+
+      const ownerLastLogin = c.memberships
+        .map((m) => m.user.lastLoginAt)
+        .filter((d): d is Date => d != null)
+        .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+
+      let status: "active" | "idle" | "dormant" | "never";
+      if (lastClock == null) status = "never";
+      else if (daysSince != null && daysSince <= 2) status = "active";
+      else if (daysSince != null && daysSince <= 7) status = "idle";
+      else status = "dormant";
+
+      return {
+        id: c.id,
+        name: c.name,
+        country: c.country,
+        createdAt: c.createdAt,
+        planName: c.subscription?.plan?.name ?? null,
+        subStatus: c.subscription?.status ?? null,
+        employeesTotal: c._count.employees,
+        employeesActive: c.employees.length,
+        clockings7d: last7Map.get(c.id) ?? 0,
+        clockings30d: stat30?.count ?? 0,
+        lastClockAt: lastClock,
+        daysSinceLastClock: daysSince,
+        ownerLastLoginAt: ownerLastLogin,
+        status,
+      };
+    })
+    .sort((a, b) => {
+      const ad = a.lastClockAt?.getTime() ?? 0;
+      const bd = b.lastClockAt?.getTime() ?? 0;
+      return bd - ad;
+    });
+}
+
+/**
+ * Entreprises silencieuses : aucun pointage depuis `daysSilent` jours.
+ * Renvoie aussi l'email/téléphone du propriétaire pour faciliter la relance.
+ */
+export async function getDormantCompanies(daysSilent = 7, limit = 30) {
+  const cutoff = daysAgo(daysSilent);
+
+  // 1. Toutes les entreprises actives.
+  const allActive = await prisma.company.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      country: true,
+      createdAt: true,
+      subscription: { select: { status: true } },
+      _count: { select: { employees: true } },
+      memberships: {
+        where: { isOwner: true },
+        select: {
+          user: { select: { fullName: true, email: true, phone: true, lastLoginAt: true } },
+        },
+        take: 1,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const allIds = allActive.map((c) => c.id);
+
+  // 2. Companies qui ont pointé récemment (>= cutoff) → on les exclut.
+  const recentRows = allIds.length
+    ? await prisma.attendanceRecord.findMany({
+        where: { companyId: { in: allIds }, date: { gte: cutoff } },
+        select: { companyId: true },
+        distinct: ["companyId"],
+      })
+    : [];
+  const recentSet = new Set(recentRows.map((r) => r.companyId));
+
+  const dormant = allActive.filter((c) => !recentSet.has(c.id)).slice(0, limit);
+  const dormantIds = dormant.map((c) => c.id);
+
+  // 3. Pour chaque dormante, dernier pointage + total pointages historiques.
+  const [lastClocks, totalCounts] = await Promise.all([
+    dormantIds.length
+      ? prisma.attendanceRecord.groupBy({
+          by: ["companyId"],
+          where: { companyId: { in: dormantIds } },
+          _max: { date: true },
+        })
+      : Promise.resolve([] as { companyId: string; _max: { date: Date | null } }[]),
+    dormantIds.length
+      ? prisma.attendanceRecord.groupBy({
+          by: ["companyId"],
+          where: { companyId: { in: dormantIds } },
+          _count: { id: true },
+        })
+      : Promise.resolve([] as { companyId: string; _count: { id: number } }[]),
+  ]);
+
+  const lastMap = new Map(lastClocks.map((r) => [r.companyId, r._max.date]));
+  const totalMap = new Map(totalCounts.map((r) => [r.companyId, r._count.id]));
+
+  const now = Date.now();
+  return dormant.map((c) => {
+    const lastClock = lastMap.get(c.id) ?? null;
+    const daysSince = lastClock
+      ? Math.floor((now - lastClock.getTime()) / 86400000)
+      : null;
+    const owner = c.memberships[0]?.user;
+    return {
+      id: c.id,
+      name: c.name,
+      country: c.country,
+      createdAt: c.createdAt,
+      subStatus: c.subscription?.status ?? null,
+      employeesCount: c._count.employees,
+      totalClockings: totalMap.get(c.id) ?? 0,
+      lastClockAt: lastClock,
+      daysSinceLastClock: daysSince,
+      ownerName: owner?.fullName ?? null,
+      ownerEmail: owner?.email ?? c.email ?? null,
+      ownerPhone: owner?.phone ?? c.phone ?? null,
+      ownerLastLoginAt: owner?.lastLoginAt ?? null,
+    };
+  });
+}
+
+/**
+ * Activité des utilisateurs (propriétaires/managers) : qui se connecte,
+ * quand, sur combien d'appareils. Tri par dernière activité descendante.
+ */
+export async function getUsersActivity(limit = 30) {
+  const users = await prisma.user.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      phone: true,
+      lastLoginAt: true,
+      isSuperAdmin: true,
+      createdAt: true,
+      memberships: {
+        select: {
+          isOwner: true,
+          company: { select: { id: true, name: true } },
+          role: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { lastLoginAt: { sort: "desc", nulls: "last" } },
+    take: limit,
+  });
+
+  const userIds = users.map((u) => u.id);
+  const sessions = userIds.length
+    ? await prisma.deviceSession.groupBy({
+        by: ["userId"],
+        where: { userId: { in: userIds } },
+        _count: { id: true },
+        _max: { lastActiveAt: true },
+      })
+    : [];
+  const sessionMap = new Map(
+    sessions.map((s) => [s.userId, { count: s._count.id, lastActive: s._max.lastActiveAt }]),
+  );
+
+  const now = Date.now();
+  return users.map((u) => {
+    const main = u.memberships[0];
+    const session = sessionMap.get(u.id);
+    const daysSince = u.lastLoginAt
+      ? Math.floor((now - u.lastLoginAt.getTime()) / 86400000)
+      : null;
+    return {
+      id: u.id,
+      email: u.email,
+      fullName: u.fullName,
+      phone: u.phone,
+      isSuperAdmin: u.isSuperAdmin,
+      companyName: main?.company.name ?? null,
+      companyId: main?.company.id ?? null,
+      role: main?.isOwner ? "Propriétaire" : main?.role.name ?? null,
+      lastLoginAt: u.lastLoginAt,
+      daysSinceLogin: daysSince,
+      deviceCount: session?.count ?? 0,
+      lastDeviceActive: session?.lastActive ?? null,
+    };
+  });
+}
+
 // ─── Audit Logs ──────────────────────────────────────────────
 
 export type LogFilter = {

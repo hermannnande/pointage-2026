@@ -16,12 +16,14 @@ import {
   LogOut,
   UsersRound,
   Stethoscope,
+  Sparkles,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 const NAV_ITEMS = [
   { href: "/super-admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/super-admin/usage", label: "Utilisation", icon: Sparkles },
   { href: "/super-admin/companies", label: "Entreprises", icon: Building2 },
   { href: "/super-admin/employees", label: "Employés", icon: Users },
   { href: "/super-admin/subscriptions", label: "Abonnements", icon: CreditCard },

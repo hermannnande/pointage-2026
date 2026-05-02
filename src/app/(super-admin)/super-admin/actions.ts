@@ -375,6 +375,43 @@ export async function getRecentActivityAction(limit = 30) {
   return sa.getRecentActivity(limit);
 }
 
+// ─── Usage & Engagement ─────────────────────────────────────
+
+export async function getUsageOverviewAction() {
+  await requireSuperAdmin();
+  return sa.getUsageOverview();
+}
+
+export async function getDailyActivityTrendAction(days = 30) {
+  await requireSuperAdmin();
+  return sa.getDailyActivityTrend(days);
+}
+
+export async function getActivityHeatmapAction() {
+  await requireSuperAdmin();
+  return sa.getActivityHeatmap();
+}
+
+export async function getOnboardingFunnelAction(days = 30) {
+  await requireSuperAdmin();
+  return sa.getOnboardingFunnel(days);
+}
+
+export async function getCompanyEngagementAction(limit = 100) {
+  await requireSuperAdmin();
+  return sa.getCompanyEngagement(limit);
+}
+
+export async function getDormantCompaniesAction(daysSilent = 7, limit = 30) {
+  await requireSuperAdmin();
+  return sa.getDormantCompanies(daysSilent, limit);
+}
+
+export async function getUsersActivityAction(limit = 30) {
+  await requireSuperAdmin();
+  return sa.getUsersActivity(limit);
+}
+
 // ─── Logs ────────────────────────────────────────────────────
 
 export async function getSuperAdminLogsAction(filters: sa.LogFilter = {}) {
