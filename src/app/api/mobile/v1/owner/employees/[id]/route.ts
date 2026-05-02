@@ -117,7 +117,8 @@ export async function PATCH(request: Request, ctx: RouteContext) {
     return ok({ employee: serializeEmployee(fresh) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erreur mise à jour employé";
-    if (msg.toLowerCase().includes("déjà utilisé")) {
+    const lower = msg.toLowerCase();
+    if (lower.includes("déjà utilisé") || lower.includes("deja utilise")) {
       return errors.conflict(msg);
     }
     return errors.serverError(msg);

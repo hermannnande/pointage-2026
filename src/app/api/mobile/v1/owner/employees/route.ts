@@ -138,7 +138,8 @@ export async function POST(request: Request) {
     return ok({ employee: serializeEmployee(fresh) }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erreur création employé";
-    if (msg.toLowerCase().includes("déjà utilisé")) {
+    const lower = msg.toLowerCase();
+    if (lower.includes("déjà utilisé") || lower.includes("deja utilise")) {
       return errors.conflict(msg);
     }
     return errors.serverError(msg);
