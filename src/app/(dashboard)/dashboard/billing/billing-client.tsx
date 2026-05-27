@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   Building2,
@@ -155,7 +155,17 @@ function QuotaBar({
 
 export function BillingClient({ data }: { data: BillingPageData }) {
   const router = useRouter();
-  const [cycle, setCycle] = useState<BillingCycleUi>("MONTHLY");
+  const searchParams = useSearchParams();
+  const subStatusUi = (data.subscriptionStatus?.status as SubStatusUi) ?? null;
+  const needsRenewal =
+    subStatusUi === "GRACE_PERIOD" ||
+    subStatusUi === "PAST_DUE" ||
+    subStatusUi === "EXPIRED";
+
+  const initialCycle: BillingCycleUi =
+    data.subscription?.billingCycle === "YEARLY" ? "YEARLY" : "MONTHLY";
+
+  const [cycle, setCycle] = useState<BillingCycleUi>(initialCycle);
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
@@ -180,6 +190,12 @@ export function BillingClient({ data }: { data: BillingPageData }) {
     pendingCheckout,
     hasPhone,
   } = data;
+
+  useEffect(() => {
+    if (searchParams.get("renew") !== "1" || !data.subscription?.planId) return;
+    const el = document.getElementById("renew-cta");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [searchParams, data.subscription?.planId]);
 
   async function launchCheckout(
     planId: string,
@@ -363,6 +379,33 @@ export function BillingClient({ data }: { data: BillingPageData }) {
                 </div>
               )}
 
+              {needsRenewal && subscription && (
+                <div id="renew-cta" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Renouvelez votre plan{" "}
+                    <span className="font-medium text-foreground">
+                      {subscription.planName}
+                    </span>{" "}
+                    pour réactiver toutes les fonctionnalités.
+                  </p>
+                  <Button
+                    size="lg"
+                    className="shrink-0"
+                    disabled={checkoutPlanId === subscription.planId}
+                    onClick={() => handleChoosePlan(subscription.planId)}
+                  >
+                    {checkoutPlanId === subscription.planId ? (
+                      "Redirection…"
+                    ) : (
+                      <>
+                        Renouveler mon abonnement
+                        <ArrowRight className="ml-1 size-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
               {quota && (
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div className="rounded-xl border bg-card p-4">
@@ -405,7 +448,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
       </Card>
 
       {/* ── Plans ─────────────────────────────────── */}
-      <section className="space-y-6">
+      <section id="plans" className="space-y-6 scroll-mt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-xl font-bold">Choisissez votre plan</h2>
@@ -454,6 +497,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {plans.map((plan) => {
             const isCurrent = subscription?.planId === plan.id;
+            const canRenewCurrent = isCurrent && needsRenewal;
             const price =
               cycle === "YEARLY" ? plan.priceYearly : plan.priceMonthly;
             const monthlyEquivalent =
@@ -539,12 +583,22 @@ export function BillingClient({ data }: { data: BillingPageData }) {
                   <Button
                     className="w-full"
                     size="lg"
-                    variant={plan.isPopular ? "default" : "outline"}
-                    disabled={isCurrent || checkoutPlanId === plan.id}
+                    variant={
+                      canRenewCurrent || plan.isPopular ? "default" : "outline"
+                    }
+                    disabled={
+                      (isCurrent && !canRenewCurrent) ||
+                      checkoutPlanId === plan.id
+                    }
                     onClick={() => handleChoosePlan(plan.id)}
                   >
                     {checkoutPlanId === plan.id ? (
                       "Redirection…"
+                    ) : canRenewCurrent ? (
+                      <>
+                        Renouveler
+                        <ArrowRight className="ml-1 size-4" />
+                      </>
                     ) : isCurrent ? (
                       "Plan actuel"
                     ) : (
