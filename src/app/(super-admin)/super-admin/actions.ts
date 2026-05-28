@@ -324,13 +324,36 @@ export async function resyncChariowSaleAction(
 
     const sale = await chariowService.getSale(saleId);
     const meta = sale.custom_metadata ?? {};
-    const companyId = meta.company_id;
-    if (!companyId) {
-      return { success: false, error: "Sale sans company_id (pas créée par OControle)" };
+    let companyId = meta.company_id;
+
+    // Fallback : si pas de company_id en metadata, on tente de retrouver la
+    // company via l'email du customer (cas Chariow qui ne renvoie pas la
+    // metadata dans certains flux).
+    if (!companyId && sale.customer?.email) {
+      const { prisma } = await import("@/lib/prisma/client");
+      const ownerMembership = await prisma.membership.findFirst({
+        where: {
+          isOwner: true,
+          isActive: true,
+          user: {
+            email: { equals: sale.customer.email, mode: "insensitive" },
+          },
+        },
+        select: { companyId: true },
+      });
+      companyId = ownerMembership?.companyId;
     }
 
-    const isSuccess = sale.status === "completed" || sale.payment?.status === "success";
-    const isFailed = sale.status === "failed" || sale.payment?.status === "failed";
+    if (!companyId) {
+      return {
+        success: false,
+        error:
+          "Impossible d'associer cette vente à une entreprise (ni company_id ni email reconnu).",
+      };
+    }
+
+    const isSuccess = chariowService.isSalePaid(sale);
+    const isFailed = chariowService.isSaleFailed(sale);
 
     if (isSuccess) {
       const billingCycle =

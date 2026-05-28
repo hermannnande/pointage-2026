@@ -55,10 +55,28 @@ export async function POST(req: NextRequest) {
     const eventType = payload.event;
     const sale = payload.sale;
 
-    const companyId = sale?.custom_metadata?.company_id;
+    let companyId = sale?.custom_metadata?.company_id;
+
+    // Fallback : si pas de company_id en metadata, on tente via l'email du
+    // customer (Chariow ne renvoie pas toujours la metadata dans les webhooks
+    // mobile money RDC). Sans ce fallback, le paiement est perdu.
+    if (!companyId && payload.customer?.email) {
+      const { prisma } = await import("@/lib/prisma/client");
+      const ownerMembership = await prisma.membership.findFirst({
+        where: {
+          isOwner: true,
+          isActive: true,
+          user: {
+            email: { equals: payload.customer.email, mode: "insensitive" },
+          },
+        },
+        select: { companyId: true },
+      });
+      companyId = ownerMembership?.companyId;
+    }
 
     if (!companyId) {
-      console.error("Webhook: company_id manquant dans custom_metadata", payload);
+      console.error("Webhook: company_id introuvable (metadata + fallback email)", payload);
       return NextResponse.json({ error: "Missing company_id" }, { status: 400 });
     }
 
@@ -66,6 +84,7 @@ export async function POST(req: NextRequest) {
 
     switch (eventType) {
       case "successful.sale":
+      case "settled.sale":
         await billingService.handlePaymentSuccess(
           companyId,
           sale?.amount?.value ?? 0,

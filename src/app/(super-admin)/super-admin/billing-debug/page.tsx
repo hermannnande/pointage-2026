@@ -198,7 +198,7 @@ export default function BillingDebugPage() {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const res = await getChariowSalesAction(150);
+      const res = await getChariowSalesAction(100);
       setData(res.sales);
       setKpis(res.kpis);
     } catch (e) {

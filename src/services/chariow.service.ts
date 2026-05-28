@@ -125,6 +125,27 @@ export function getPlanFromProductId(
   return null;
 }
 
+/**
+ * Statuts Chariow considérés comme un paiement réussi.
+ * Chariow utilise `completed` ou `settled` selon les flux (Wave, Vodacom RDC, etc.).
+ */
+const SUCCESS_STATUSES = new Set(["completed", "settled", "paid", "success"]);
+const FAILED_STATUSES = new Set(["failed", "cancelled", "canceled"]);
+
+export function isSalePaid(sale: ChariowSale): boolean {
+  return (
+    SUCCESS_STATUSES.has(sale.status?.toLowerCase() ?? "") ||
+    SUCCESS_STATUSES.has(sale.payment?.status?.toLowerCase() ?? "")
+  );
+}
+
+export function isSaleFailed(sale: ChariowSale): boolean {
+  return (
+    FAILED_STATUSES.has(sale.status?.toLowerCase() ?? "") ||
+    FAILED_STATUSES.has(sale.payment?.status?.toLowerCase() ?? "")
+  );
+}
+
 export async function createCheckoutSession(params: ChariowCheckoutParams) {
   const {
     companyId,

@@ -80,10 +80,40 @@ export interface BillingPageData {
 async function syncCompletedSalesForCompany(companyId: string, userEmail: string) {
   const sales = await chariowService.listSales(100).catch(() => []);
 
-  for (const sale of sales) {
-    const paymentOk =
-      sale.status === "completed" || sale.payment?.status === "success";
-    if (!paymentOk) continue;
+  for (const listSale of sales) {
+    if (!chariowService.isSalePaid(listSale)) continue;
+
+    const listMeta = listSale.custom_metadata ?? {};
+    const listSaleCompanyId = listMeta.company_id;
+    const listCustomerEmail = listSale.customer?.email;
+
+    // Pré-filtre : on ne s'occupe que des sales qui pourraient nous concerner
+    // (soit company_id en metadata, soit email du customer = email du user actuel)
+    const looksLikeOurs =
+      listSaleCompanyId === companyId ||
+      (!!listCustomerEmail &&
+        listCustomerEmail.toLowerCase() === userEmail.toLowerCase());
+
+    if (!looksLikeOurs) continue;
+
+    // Idempotence : si on a déjà traité cette sale avec succès, on saute
+    const alreadyProcessed = await prisma.billingEvent.findFirst({
+      where: {
+        companyId,
+        type: "payment_success",
+        chariowSaleId: listSale.id,
+      },
+      select: { id: true },
+    });
+    if (alreadyProcessed) continue;
+
+    // `listSales` renvoie une version allégée (pas de product.id ni de
+    // custom_metadata complète). On re-fetch le détail de la sale pour
+    // avoir toutes les infos avant d'activer.
+    const sale = await chariowService.getSale(listSale.id).catch(() => null);
+    if (!sale) continue;
+
+    if (!chariowService.isSalePaid(sale)) continue;
 
     const meta = sale.custom_metadata ?? {};
     const saleCompanyId = meta.company_id;
@@ -93,10 +123,8 @@ async function syncCompletedSalesForCompany(companyId: string, userEmail: string
     const belongsToCompany =
       saleCompanyId === companyId ||
       (!saleCompanyId &&
-        !!productId &&
         !!customerEmail &&
-        customerEmail.toLowerCase() === userEmail.toLowerCase() &&
-        !!chariowService.getPlanFromProductId(productId));
+        customerEmail.toLowerCase() === userEmail.toLowerCase());
 
     if (!belongsToCompany) continue;
 
@@ -324,10 +352,19 @@ export async function confirmSaleFromReturnAction(
       return { success: false, error: "Cette vente ne correspond pas à votre entreprise." };
     }
 
-    const paymentOk =
-      sale.status === "completed" || sale.payment?.status === "success";
+    // Si pas de company_id en metadata, on vérifie au moins que l'email
+    // du customer correspond à celui de l'utilisateur connecté.
+    if (!meta.company_id) {
+      const customerEmail = sale.customer?.email?.toLowerCase();
+      if (!customerEmail || customerEmail !== ctx.user.email.toLowerCase()) {
+        return {
+          success: false,
+          error: "Cette vente ne correspond pas à votre compte.",
+        };
+      }
+    }
 
-    if (paymentOk) {
+    if (chariowService.isSalePaid(sale)) {
       await billingService.handlePaymentSuccess(
         ctx.companyId,
         sale.amount?.value ?? 0,
@@ -351,7 +388,7 @@ export async function confirmSaleFromReturnAction(
       };
     }
 
-    if (sale.status === "failed" || sale.payment?.status === "failed") {
+    if (chariowService.isSaleFailed(sale)) {
       await billingService.handlePaymentFailed(ctx.companyId, sale.id);
       return { success: true, data: { paymentStatus: "failed" } };
     }
