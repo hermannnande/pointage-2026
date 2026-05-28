@@ -9,7 +9,18 @@ export const DEFAULT_LOCALE = "fr";
 export const DEFAULT_COUNTRY = "CI";
 
 export const TRIAL_DAYS = 7;
-export const GRACE_PERIOD_DAYS = 7;
+export const GRACE_PERIOD_DAYS = 3;
+
+export const BILLING_NOTIFICATION_MILESTONES = {
+  RENEWAL_J7: "renewal_j7",
+  RENEWAL_J3: "renewal_j3",
+  RENEWAL_J0: "renewal_j0",
+  GRACE_START: "grace_start",
+  GRACE_LAST_DAY: "grace_last_day",
+  SUSPENDED: "suspended",
+  TRIAL_J3: "trial_j3",
+  TRIAL_J0: "trial_j0",
+} as const;
 export const GEOFENCE_DEFAULT_RADIUS_METERS = 200;
 export const LATE_GRACE_MINUTES = 15;
 
