@@ -19,12 +19,14 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const arch = request.nextUrl.searchParams.get("arch");
   const file = arch === "32" ? "ocontrole-32bit.apk" : "ocontrole.apk";
+  // Nom affiché à l'utilisateur au téléchargement (Content-Disposition).
+  const downloadName = arch === "32" ? "OControle-32bit.apk" : "OControle.apk";
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const target =
     arch !== "32" && process.env.APK_PUBLIC_URL
       ? process.env.APK_PUBLIC_URL
-      : `${supabaseUrl}/storage/v1/object/public/apk/${file}?download=${file}`;
+      : `${supabaseUrl}/storage/v1/object/public/apk/${file}?download=${downloadName}`;
 
   return NextResponse.redirect(target, 302);
 }

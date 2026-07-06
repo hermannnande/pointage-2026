@@ -28,7 +28,8 @@ const PUBSPEC_PATH = "../ocontrole_mobile/pubspec.yaml";
 /** Notes de version affichées dans le popup de mise à jour de l'app.
  *  Modifier ici avant chaque publication (ou laisser vide). */
 const RELEASE_NOTES =
-  "Connexion Google améliorée, session conservée au redémarrage, corrections diverses.";
+  "Nouveau parcours d'accueil, paiement de l'abonnement intégré à l'app, " +
+  "connexion Google fluide, session conservée au redémarrage.";
 
 /** Lit `version: 1.0.15+16` du pubspec → { versionName, versionCode }. */
 function readAppVersion(): { versionName: string; versionCode: number } {
