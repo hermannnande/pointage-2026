@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock, Eye, EyeOff, Loader2, LogIn, Phone } from "lucide-react";
+import { Clock, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/common/phone-input";
 
 import { employeeLoginAction } from "./actions";
 
@@ -26,7 +27,7 @@ export default function EmployeeLoginPage() {
     setError(null);
 
     const result = await employeeLoginAction({
-      phone: phone.trim(),
+      phone: phone.replace(/\s+/g, ""),
       password: password,
     });
 
@@ -70,21 +71,14 @@ export default function EmployeeLoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Numéro de téléphone</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ex : 0778030075"
-                  required
-                  disabled={loading}
-                  maxLength={20}
-                  className="pl-10 text-lg"
-                  autoComplete="tel"
-                />
-              </div>
+              <PhoneInput
+                id="phone"
+                value={phone}
+                onChange={setPhone}
+                placeholder="07 78 03 00 75"
+                required
+                disabled={loading}
+              />
               <p className="text-xs text-muted-foreground">
                 Le numéro enregistré par votre responsable
               </p>

@@ -53,7 +53,12 @@ const FAQ_ITEMS = [
   {
     question: "Comment fonctionne l'essai gratuit ?",
     answer:
-      "Vous bénéficiez de 7 jours d'essai gratuit avec accès complet. À l'expiration, choisissez un plan pour continuer à utiliser OControle.",
+      "Vous bénéficiez de 3 jours d'essai gratuit avec accès complet. À l'expiration, choisissez un plan pour continuer à utiliser OControle.",
+  },
+  {
+    question: "Comment installer l'application mobile Android (APK) ?",
+    answer:
+      "Téléchargez l'APK depuis ocontrole.com/download/apk sur votre téléphone Android, ouvrez le fichier depuis vos notifications ou le dossier Téléchargements, autorisez l'installation depuis cette source si Android le demande, puis appuyez sur Installer. Connectez-vous ensuite avec votre compte habituel.",
   },
   {
     question: "Comment modifier les informations de mon entreprise ?",

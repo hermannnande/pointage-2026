@@ -13,12 +13,14 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Download,
   Factory,
   Fingerprint,
   HeartPulse,
   MapPin,
   Plus,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Star,
   Store,
@@ -148,7 +150,7 @@ const faq = [
   },
   {
     q: "Combien ça coûte ?",
-    a: "Tarif transparent par employé actif et par mois. 7 jours gratuits sans carte bancaire pour tester. Voir la page tarifs pour le détail.",
+    a: "Tarif transparent par employé actif et par mois. 3 jours gratuits sans carte bancaire pour tester. Voir la page tarifs pour le détail.",
   },
   {
     q: "Mes données sont-elles sécurisées ?",
@@ -202,10 +204,16 @@ export default function HomePage() {
               <Button size="lg" variant="outline" className="gap-2" asChild>
                 <Link href="/contact">Demander une démo</Link>
               </Button>
+              <Button size="lg" variant="outline" className="gap-2" asChild>
+                <a href="/download/apk" download>
+                  <Smartphone className="h-4 w-4" />
+                  Télécharger l&apos;app Android
+                </a>
+              </Button>
             </div>
             <p className="mt-5 text-xs text-muted-foreground">
               <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5 text-emerald-600" />
-              7 jours d&apos;essai · Sans carte bancaire · Support francophone
+              3 jours d&apos;essai · Sans carte bancaire · Support francophone
             </p>
 
             <div className="mt-8 flex items-center gap-4 border-t pt-6">
@@ -741,7 +749,7 @@ export default function HomePage() {
               Modernisez votre pointage cette semaine.
             </h2>
             <p className="mt-4 max-w-xl text-base text-zinc-900/85">
-              7 jours gratuits, sans carte. Configuration accompagnée par un
+              3 jours gratuits, sans carte. Configuration accompagnée par un
               expert francophone. Vos équipes pointent dès demain.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -762,6 +770,17 @@ export default function HomePage() {
                 asChild
               >
                 <Link href="/pricing">Voir les tarifs</Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="gap-2 border-2 border-zinc-900/30 bg-white/15 text-zinc-900 backdrop-blur hover:bg-white/30"
+                asChild
+              >
+                <a href="/download/apk" download>
+                  <Download className="h-4 w-4" />
+                  App Android (APK)
+                </a>
               </Button>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-zinc-900/80">

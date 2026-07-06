@@ -453,7 +453,7 @@ export function BillingClient({ data }: { data: BillingPageData }) {
           <div>
             <h2 className="text-xl font-bold">Choisissez votre plan</h2>
             <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              Tous les plans incluent 7 jours d&apos;essai gratuit
+              Tous les plans incluent 3 jours d&apos;essai gratuit
               <a
                 href="/pricing"
                 target="_blank"

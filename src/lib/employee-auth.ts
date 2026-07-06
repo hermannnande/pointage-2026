@@ -2,7 +2,12 @@ import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "node:crypt
 
 const SESSION_SECRET =
   process.env.SUPABASE_SERVICE_ROLE_KEY || "oc-employee-fallback-secret-key";
-const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
+// 30 jours : l'app mobile de pointage est utilisée quotidiennement — un
+// token de 24h forçait les employés à se reconnecter chaque jour. La
+// sécurité reste assurée côté serveur : chaque requête re-vérifie que
+// l'employé existe et est actif (un employé désactivé est bloqué
+// immédiatement, token valide ou pas).
+const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
 export const EMPLOYEE_COOKIE_NAME = "oc_employee_session";
 
 export function hashPassword(password: string): string {

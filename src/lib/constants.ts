@@ -8,8 +8,17 @@ export const DEFAULT_TIMEZONE = "Africa/Abidjan";
 export const DEFAULT_LOCALE = "fr";
 export const DEFAULT_COUNTRY = "CI";
 
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 3;
 export const GRACE_PERIOD_DAYS = 3;
+
+/**
+ * Chemin local de téléchargement de l'APK Android.
+ * La route /download/apk redirige vers le fichier hébergé (Supabase Storage),
+ * ce qui permet de mettre à jour l'APK sans redéployer le site.
+ */
+export const APK_DOWNLOAD_PATH = "/download/apk";
+/** Taille approximative de l'APK affichée dans l'UI (mise à jour au besoin). */
+export const APK_SIZE_LABEL = "≈ 31 Mo";
 
 export const BILLING_NOTIFICATION_MILESTONES = {
   RENEWAL_J7: "renewal_j7",

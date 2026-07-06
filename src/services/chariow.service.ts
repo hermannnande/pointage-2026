@@ -63,6 +63,12 @@ interface ChariowCheckoutParams {
    * Si fourni, Chariow pré-remplit le pays au checkout — pas de sélection manuelle.
    */
   country?: string;
+  /**
+   * URL de retour après paiement. Défaut : page succès du dashboard web.
+   * Le checkout mobile passe une page publique (sans login web requis).
+   * Peut contenir le placeholder {sale_id}.
+   */
+  redirectUrl?: string;
 }
 
 export interface ChariowSale {
@@ -158,6 +164,7 @@ export async function createCheckoutSession(params: ChariowCheckoutParams) {
     customerPhone,
     companyPhone,
     country,
+    redirectUrl,
   } = params;
 
   if (!CHARIOW_API_KEY) {
@@ -201,7 +208,8 @@ export async function createCheckoutSession(params: ChariowCheckoutParams) {
       number: phoneNumber,
       country_code: countryCode,
     },
-    redirect_url: `${publicAppUrl}/dashboard/billing/success?sale_id={sale_id}`,
+    redirect_url:
+      redirectUrl ?? `${publicAppUrl}/dashboard/billing/success?sale_id={sale_id}`,
     custom_metadata: {
       company_id: companyId,
       plan_id: planId,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   CrosshairIcon,
+  Download,
   Globe2,
   Info,
   Loader2,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { CountrySelect } from "@/components/common/country-select";
 import { GeoLocationPicker } from "@/components/common/geo-location-picker";
+import { ApkInstallDialog } from "@/components/apk/apk-install-dialog";
 
 import {
   completeOnboardingAction,
@@ -76,8 +78,17 @@ export default function OnboardingPage() {
   const [geoAddress, setGeoAddress] = useState<string>("");
   const [geofenceRadius, setGeofenceRadius] = useState(50);
   const [siteSkipped, setSiteSkipped] = useState(false);
+  const [apkDialogOpen, setApkDialogOpen] = useState(false);
 
   const currentIndex = stepsMeta.findIndex((s) => s.key === currentStep);
+
+  // Popup APK : proposé automatiquement une fois l'inscription terminée
+  // (léger délai pour laisser l'écran de succès s'afficher d'abord).
+  useEffect(() => {
+    if (currentStep !== "done") return;
+    const timer = setTimeout(() => setApkDialogOpen(true), 900);
+    return () => clearTimeout(timer);
+  }, [currentStep]);
 
   async function handleCompanySubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -537,7 +548,7 @@ export default function OnboardingPage() {
             <div className="mt-5 flex items-center gap-2 rounded-xl bg-primary/5 border border-primary/15 px-5 py-3">
               <CheckCircle2 className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-primary">
-                Essai gratuit de 7 jours activé
+                Essai gratuit de 3 jours activé
               </span>
             </div>
 
@@ -569,6 +580,25 @@ export default function OnboardingPage() {
               Accéder au tableau de bord
               <ArrowRight className="h-4 w-4" />
             </Button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              className="mt-3 w-full gap-2"
+              asChild
+            >
+              <a href="/download/apk" download>
+                <Download className="h-4 w-4" />
+                Télécharger l&apos;app Android (APK)
+              </a>
+            </Button>
+
+            <ApkInstallDialog
+              open={apkDialogOpen}
+              onOpenChange={setApkDialogOpen}
+              title="Votre compte est prêt — installez l'app !"
+              description="Téléchargez l'application Android OControle pour suivre votre entreprise en temps réel, où que vous soyez."
+            />
           </CardContent>
         </Card>
       )}

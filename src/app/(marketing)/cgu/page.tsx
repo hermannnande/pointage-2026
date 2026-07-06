@@ -64,7 +64,7 @@ export default function CguPage() {
 
         <h2>4. Période d&apos;essai et abonnement</h2>
         <p>
-          OControle est proposé avec une période d&apos;essai gratuite de 7
+          OControle est proposé avec une période d&apos;essai gratuite de 3
           jours, sans engagement ni carte bancaire. À l&apos;issue de cette
           période, l&apos;accès au service nécessite la souscription à un
           abonnement payant. Les tarifs sont disponibles sur la page{" "}

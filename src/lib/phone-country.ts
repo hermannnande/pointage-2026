@@ -156,6 +156,9 @@ const PHONE_PREFIX_TO_COUNTRY: Record<string, string> = {
   "856": "LA", // Laos
   "93": "AF", // Afghanistan
   "998": "UZ", // Ouzbékistan
+  "995": "GE", // Géorgie
+  "994": "AZ", // Azerbaïdjan
+  "374": "AM", // Arménie
   // Océanie
   "61": "AU", // Australie
   "64": "NZ", // Nouvelle-Zélande
@@ -177,9 +180,11 @@ const COUNTRY_TO_PHONE_PREFIX: Record<string, string> = (() => {
   for (const [prefix, country] of Object.entries(PHONE_PREFIX_TO_COUNTRY)) {
     if (!map[country]) map[country] = prefix;
   }
-  // Overrides explicites (cas ambigus +1)
+  // Overrides explicites (cas ambigus : préfixes partagés entre pays)
   map.US = "1";
   map.CA = "1";
+  map.KZ = "7"; // partagé avec la Russie
+  map.YT = "262"; // Mayotte, partagé avec La Réunion
   return map;
 })();
 

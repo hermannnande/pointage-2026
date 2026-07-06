@@ -9,6 +9,7 @@ import { TRIAL_DAYS } from "@/lib/constants";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { SubscriptionBanner } from "@/components/billing/subscription-banner";
+import { MobileAppBanner } from "@/components/apk/mobile-app-banner";
 import { TenantProvider } from "@/components/providers/tenant-provider";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,9 @@ export default async function DashboardLayout({
                 />
               </div>
             )}
+            <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+              <MobileAppBanner />
+            </div>
             <div className="p-4 sm:p-6">
               {children}
             </div>

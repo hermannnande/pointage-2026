@@ -15,6 +15,7 @@
 import { headers } from "next/headers";
 
 import { verifySessionToken, type EmployeeSessionPayload } from "@/lib/employee-auth";
+import { prisma } from "@/lib/prisma/client";
 import { getTenantContext } from "@/services/tenant.service";
 import type { TenantContext } from "@/types";
 
@@ -48,6 +49,21 @@ export async function requireEmployeeAuth(): Promise<EmployeeAuth> {
   const session = verifySessionToken(token);
   if (!session) {
     return { ok: false, response: errors.unauthorized("Token invalide ou expiré") };
+  }
+
+  // Re-validation serveur : le token HMAC vit 30 jours, il faut donc
+  // vérifier à chaque requête que l'employé existe toujours et est actif.
+  // Sans ce contrôle, un employé désactivé/supprimé pourrait continuer à
+  // utiliser l'app jusqu'à l'expiration de son token.
+  const employee = await prisma.employee.findUnique({
+    where: { id: session.employeeId },
+    select: { isActive: true, companyId: true },
+  });
+  if (!employee || !employee.isActive || employee.companyId !== session.companyId) {
+    return {
+      ok: false,
+      response: errors.unauthorized("Compte employé désactivé. Contactez votre administrateur."),
+    };
   }
 
   return { ok: true, session, token };

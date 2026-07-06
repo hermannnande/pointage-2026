@@ -100,7 +100,7 @@ export default function SignupPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Créer un compte</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          7 jours d&apos;essai gratuit — Sans carte bancaire
+          3 jours d&apos;essai gratuit — Sans carte bancaire
         </p>
       </div>
 

@@ -152,7 +152,7 @@ export default function FonctionnalitesPage() {
         <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">
-              Tout ça en un seul outil. Et c&apos;est gratuit pendant 7 jours.
+              Tout ça en un seul outil. Et c&apos;est gratuit pendant 3 jours.
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Sans carte bancaire. Configuration accompagnée par un expert
