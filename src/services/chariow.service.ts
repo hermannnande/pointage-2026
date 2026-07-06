@@ -6,7 +6,13 @@ const CHARIOW_API_URL =
 const CHARIOW_API_KEY = process.env.CHARIOW_API_KEY || "";
 const CHARIOW_WEBHOOK_SECRET = process.env.CHARIOW_WEBHOOK_SECRET || "";
 
-function getPublicAppUrl(): string {
+/**
+ * URL publique du site, validée (skippe localhost en production et les
+ * valeurs malformées). Exportée pour que le checkout mobile construise
+ * un `redirect_url` toujours valide — Chariow rejette la vente sinon
+ * ("The redirect url field must be a valid URL").
+ */
+export function getPublicAppUrl(): string {
   const candidates = [
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.APP_URL,

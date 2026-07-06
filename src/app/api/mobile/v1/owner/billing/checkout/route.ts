@@ -93,7 +93,9 @@ export async function POST(request: Request) {
       phone: phoneForCheckout,
     });
 
-    const publicUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ocontrole.com";
+    // Même helper validé que le web : jamais de localhost ni d'URL
+    // malformée dans redirect_url (sinon Chariow rejette la vente).
+    const publicUrl = chariowService.getPublicAppUrl();
     const { saleId, checkoutUrl } = await chariowService.createCheckoutSession({
       companyId: ctx.companyId,
       planId: plan.id,
