@@ -83,6 +83,35 @@ export async function POST(request: Request) {
     matricule: employee.matricule || "",
   });
 
+  // Trace la connexion pour les analytics super-admin "App mobile" (les
+  // employés n'avaient AUCUN timestamp de dernière connexion jusqu'ici).
+  // Best-effort — ne doit jamais faire échouer le login.
+  try {
+    const platform = request.headers.get("x-client-platform") ?? "app";
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip");
+    const userAgent = request.headers.get("user-agent");
+    await Promise.allSettled([
+      prisma.employee.update({
+        where: { id: employee.id },
+        data: { lastLoginAt: new Date() },
+      }),
+      prisma.appConnectionLog.create({
+        data: {
+          companyId: employee.companyId,
+          employeeId: employee.id,
+          role: "EMPLOYEE",
+          platform,
+          ipAddress: ip,
+          userAgent,
+        },
+      }),
+    ]);
+  } catch {
+    // Non-bloquant.
+  }
+
   return ok({
     token,
     expiresAt: new Date(Date.now() + SESSION_DURATION_MS).toISOString(),

@@ -120,6 +120,37 @@ export async function POST(request: Request) {
     });
   }
 
+  // Trace la connexion pour les analytics super-admin "App mobile" (qui a
+  // installé/se connecte à l'APK) + met à jour lastLoginAt (jusqu'ici jamais
+  // écrit par ce endpoint : les métriques de connexion owner existantes
+  // étaient donc aveugles à tout usage mobile). Best-effort — ne doit jamais
+  // faire échouer l'authentification.
+  try {
+    const platform = request.headers.get("x-client-platform") ?? "app";
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip");
+    const userAgent = request.headers.get("user-agent");
+    await Promise.allSettled([
+      prisma.user.update({
+        where: { id: tenant.userId },
+        data: { lastLoginAt: new Date() },
+      }),
+      prisma.appConnectionLog.create({
+        data: {
+          companyId: tenant.companyId,
+          userId: tenant.userId,
+          role: "OWNER",
+          platform,
+          ipAddress: ip,
+          userAgent,
+        },
+      }),
+    ]);
+  } catch {
+    // Non-bloquant.
+  }
+
   return ok({
     supabaseUid,
     email,

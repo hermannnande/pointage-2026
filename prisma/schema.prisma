@@ -32,6 +32,7 @@ model User {
   auditLogs     AuditLog[] @relation("AuditActor")
   adminNotes    AdminNote[] @relation("AdminNoteAuthor")
   superAdminLogs SuperAdminLog[] @relation("SuperAdminLogActor")
+  appConnectionLogs AppConnectionLog[]
 
   @@map("users")
 }
@@ -70,6 +71,7 @@ model Company {
   adminNotes             AdminNote[]
   payrollConfig          PayrollConfig?
   employeeNotifications  EmployeeNotification[]
+  appConnectionLogs      AppConnectionLog[]
 
   @@map("companies")
 }
@@ -209,6 +211,7 @@ model Employee {
   kioskPin     String?      @map("kiosk_pin")
   passwordHash String?      @map("password_hash")
   isActive     Boolean      @default(true) @map("is_active")
+  lastLoginAt  DateTime?    @map("last_login_at")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
@@ -227,6 +230,7 @@ model Employee {
   payrollEntries         PayrollEntry[]
   employeeNotifications  EmployeeNotification[]
   notificationReads      EmployeeNotificationRead[]
+  appConnectionLogs      AppConnectionLog[]
 
   @@unique([companyId, matricule])
   @@index([phone])
@@ -790,6 +794,38 @@ model DeviceSession {
 
   @@index([userId])
   @@map("device_sessions")
+}
+
+/**
+ * Journal des connexions à l'application mobile (APK Android) — une ligne
+ * par login réussi (propriétaire : exchange Supabase ; employé : login
+ * téléphone+mdp). Alimente les analytics super-admin "App mobile"
+ * (qui installe/utilise l'app, tendance des connexions, adoption par
+ * entreprise). `platform` reprend l'en-tête `X-Client-Platform` envoyé par
+ * le client Flutter ("flutter" aujourd'hui ; pourra distinguer
+ * android/ios plus tard).
+ */
+model AppConnectionLog {
+  id         String   @id @default(cuid())
+  companyId  String   @map("company_id")
+  userId     String?  @map("user_id")
+  employeeId String?  @map("employee_id")
+  role       String
+  platform   String   @default("flutter")
+  appVersion String?  @map("app_version")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([userId])
+  @@index([employeeId])
+  @@index([createdAt])
+  @@map("app_connection_logs")
 }
 
 // ============================================================

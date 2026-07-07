@@ -1585,3 +1585,228 @@ export async function updateSuperAdminRole(userId: string, newRole: SARole, acto
 export async function isOwnerRole(role: string | null | undefined): Promise<boolean> {
   return role === "owner";
 }
+
+// ============================================================
+// APP MOBILE (APK) — Analytics d'installation / connexion
+// ============================================================
+// Alimenté par `AppConnectionLog`, écrit à chaque login réussi depuis
+// l'APK Flutter (owner exchange + employee login). Un "install" au sens
+// strict n'est pas mesurable (aucune télémétrie ne remonte tant que
+// l'utilisateur ne se connecte pas) — ces métriques mesurent donc
+// l'adoption réelle : qui s'est connecté au moins une fois via l'app.
+
+export async function getMobileAppOverview() {
+  const today = startOfDay();
+  const since7 = daysAgo(7);
+  const since30 = daysAgo(30);
+
+  const [
+    ownersConnectedRows,
+    employeesConnectedRows,
+    connectionsToday,
+    connections7d,
+    connections30d,
+    companiesUsingAppRows,
+    totalCompanies,
+    totalOwnerMemberships,
+    totalEmployees,
+  ] = await Promise.all([
+    prisma.appConnectionLog.findMany({
+      where: { role: "OWNER", userId: { not: null } },
+      select: { userId: true },
+      distinct: ["userId"],
+    }),
+    prisma.appConnectionLog.findMany({
+      where: { role: "EMPLOYEE", employeeId: { not: null } },
+      select: { employeeId: true },
+      distinct: ["employeeId"],
+    }),
+    prisma.appConnectionLog.count({ where: { createdAt: { gte: today } } }),
+    prisma.appConnectionLog.count({ where: { createdAt: { gte: since7 } } }),
+    prisma.appConnectionLog.count({ where: { createdAt: { gte: since30 } } }),
+    prisma.appConnectionLog.findMany({
+      select: { companyId: true },
+      distinct: ["companyId"],
+    }),
+    prisma.company.count(),
+    prisma.membership.count({ where: { isOwner: true, isActive: true } }),
+    prisma.employee.count({ where: { isActive: true } }),
+  ]);
+
+  const ownersConnected = ownersConnectedRows.length;
+  const employeesConnected = employeesConnectedRows.length;
+  const companiesUsingApp = companiesUsingAppRows.length;
+
+  return {
+    ownersConnected,
+    employeesConnected,
+    connectionsToday,
+    connections7d,
+    connections30d,
+    companiesUsingApp,
+    totalCompanies,
+    totalOwnerMemberships,
+    totalEmployees,
+    ownerAdoptionRate:
+      totalOwnerMemberships > 0
+        ? Math.round((ownersConnected / totalOwnerMemberships) * 100)
+        : 0,
+    employeeAdoptionRate:
+      totalEmployees > 0
+        ? Math.round((employeesConnected / totalEmployees) * 100)
+        : 0,
+    companyAdoptionRate:
+      totalCompanies > 0
+        ? Math.round((companiesUsingApp / totalCompanies) * 100)
+        : 0,
+  };
+}
+
+/**
+ * Courbe des connexions app sur N jours, séparées owner / employé.
+ */
+export async function getAppConnectionTrend(days = 30) {
+  const since = daysAgo(days - 1);
+
+  const logs = await prisma.appConnectionLog.findMany({
+    where: { createdAt: { gte: since } },
+    select: { createdAt: true, role: true },
+  });
+
+  const buckets = new Map<
+    string,
+    { day: string; owners: number; employees: number }
+  >();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    buckets.set(key, { day: key, owners: 0, employees: 0 });
+  }
+
+  for (const log of logs) {
+    const key = log.createdAt.toISOString().slice(0, 10);
+    const b = buckets.get(key);
+    if (!b) continue;
+    if (log.role === "OWNER") b.owners++;
+    else if (log.role === "EMPLOYEE") b.employees++;
+  }
+
+  return Array.from(buckets.values()).sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/**
+ * Dernières connexions à l'app, tous rôles confondus — pour repérer en un
+ * coup d'œil qui vient d'installer / se connecter.
+ */
+export async function getRecentAppConnections(limit = 50) {
+  const logs = await prisma.appConnectionLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      company: { select: { name: true } },
+      user: { select: { fullName: true, email: true } },
+      employee: { select: { firstName: true, lastName: true, phone: true } },
+    },
+  });
+
+  return logs.map((l) => ({
+    id: l.id,
+    role: l.role,
+    name:
+      l.role === "OWNER"
+        ? (l.user?.fullName ?? l.user?.email ?? "—")
+        : l.employee
+          ? `${l.employee.firstName} ${l.employee.lastName}`
+          : "—",
+    contact: l.role === "OWNER" ? l.user?.email : l.employee?.phone,
+    companyName: l.company.name,
+    platform: l.platform,
+    ipAddress: l.ipAddress,
+    createdAt: l.createdAt,
+  }));
+}
+
+/**
+ * Adoption de l'app par entreprise : le propriétaire s'est-il déjà
+ * connecté via l'APK, et combien d'employés (sur le total) l'utilisent.
+ * Trié par nombre d'employés connectés décroissant (entreprises les plus
+ * engagées côté mobile en premier).
+ */
+export async function getCompanyAppAdoption(limit = 100) {
+  const companies = await prisma.company.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      _count: { select: { employees: { where: { isActive: true } } } },
+      memberships: {
+        where: { isOwner: true, isActive: true },
+        take: 1,
+        select: { user: { select: { fullName: true, email: true } } },
+      },
+    },
+    take: 500, // garde-fou ; le tri final se fait après agrégation ci-dessous
+  });
+
+  const companyIds = companies.map((c) => c.id);
+  const [ownerLogs, employeeLogs] = await Promise.all([
+    prisma.appConnectionLog.findMany({
+      where: { companyId: { in: companyIds }, role: "OWNER" },
+      select: { companyId: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.appConnectionLog.findMany({
+      where: { companyId: { in: companyIds }, role: "EMPLOYEE" },
+      select: { companyId: true, employeeId: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const ownerLastByCompany = new Map<string, Date>();
+  for (const l of ownerLogs) {
+    if (!ownerLastByCompany.has(l.companyId)) {
+      ownerLastByCompany.set(l.companyId, l.createdAt);
+    }
+  }
+
+  const employeesByCompany = new Map<string, Set<string>>();
+  for (const l of employeeLogs) {
+    if (!l.employeeId) continue;
+    let set = employeesByCompany.get(l.companyId);
+    if (!set) {
+      set = new Set();
+      employeesByCompany.set(l.companyId, set);
+    }
+    set.add(l.employeeId);
+  }
+
+  const rows = companies.map((c) => {
+    const employeesConnected = employeesByCompany.get(c.id)?.size ?? 0;
+    const totalEmployees = c._count.employees;
+    return {
+      companyId: c.id,
+      companyName: c.name,
+      ownerName: c.memberships[0]?.user.fullName ?? "—",
+      ownerConnectedApp: ownerLastByCompany.has(c.id),
+      ownerLastAppLoginAt: ownerLastByCompany.get(c.id) ?? null,
+      employeesConnected,
+      totalEmployees,
+      employeeAdoptionRate:
+        totalEmployees > 0
+          ? Math.round((employeesConnected / totalEmployees) * 100)
+          : 0,
+    };
+  });
+
+  rows.sort((a, b) => {
+    // Entreprises actives sur mobile d'abord (propriétaire OU employés),
+    // puis par volume d'employés connectés décroissant.
+    const aActive = a.ownerConnectedApp || a.employeesConnected > 0;
+    const bActive = b.ownerConnectedApp || b.employeesConnected > 0;
+    if (aActive !== bActive) return aActive ? -1 : 1;
+    return b.employeesConnected - a.employeesConnected;
+  });
+
+  return rows.slice(0, limit);
+}

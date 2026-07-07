@@ -493,3 +493,25 @@ export async function getCurrentAdminRoleAction(): Promise<string | null> {
   const admin = await requireSuperAdmin();
   return admin.superAdminRole;
 }
+
+// ─── App mobile (APK) ───────────────────────────────────────
+
+export async function getMobileAppOverviewAction() {
+  await requireSuperAdmin();
+  return sa.getMobileAppOverview();
+}
+
+export async function getAppConnectionTrendAction(days = 30) {
+  await requireSuperAdmin();
+  return sa.getAppConnectionTrend(days);
+}
+
+export async function getRecentAppConnectionsAction(limit = 50) {
+  await requireSuperAdmin();
+  return sa.getRecentAppConnections(limit);
+}
+
+export async function getCompanyAppAdoptionAction(limit = 100) {
+  await requireSuperAdmin();
+  return sa.getCompanyAppAdoption(limit);
+}
