@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 
-export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || "1404819328327910";
+export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || "1088476616836820";
 
 declare global {
   interface Window {

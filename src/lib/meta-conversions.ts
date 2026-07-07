@@ -26,7 +26,7 @@ function sha256(value: string) {
 }
 
 function getPixelId() {
-  return process.env.NEXT_PUBLIC_FB_PIXEL_ID || process.env.FB_PIXEL_ID || "1404819328327910";
+  return process.env.NEXT_PUBLIC_FB_PIXEL_ID || process.env.FB_PIXEL_ID || "1088476616836820";
 }
 
 function getAccessToken() {
