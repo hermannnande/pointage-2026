@@ -28,9 +28,9 @@ const PUBSPEC_PATH = "../ocontrole_mobile/pubspec.yaml";
 /** Notes de version affichées dans le popup de mise à jour de l'app.
  *  Modifier ici avant chaque publication (ou laisser vide). */
 const RELEASE_NOTES =
-  "Paiement corrigé pour tous les pays (numéro de téléphone), indicatif " +
-  "automatique selon votre pays, correction des lieux affichés après " +
-  "changement de compte, et nouveau rappel de mise à jour dans l'app.";
+  "Mot de passe oublié opérationnel (email de réinitialisation), paiement " +
+  "corrigé pour tous les pays, indicatif automatique selon votre pays, et " +
+  "correction des lieux affichés après changement de compte.";
 
 /** Lit `version: 1.0.15+16` du pubspec → { versionName, versionCode }. */
 function readAppVersion(): { versionName: string; versionCode: number } {
