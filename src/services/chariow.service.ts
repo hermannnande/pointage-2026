@@ -308,6 +308,26 @@ export function verifyWebhookSignature(
   }
 }
 
+/**
+ * Comparaison timing-safe de deux secrets (le webhook Chariow passe le
+ * secret partagé dans l'URL `?secret=…`, pas dans une signature HMAC).
+ * Renvoie false si l'un est vide ou si les longueurs diffèrent.
+ */
+export function safeSecretEquals(provided: string, expected: string): boolean {
+  if (!provided || !expected || provided.length !== expected.length) {
+    return false;
+  }
+  try {
+    const crypto = require("crypto") as typeof import("crypto");
+    return crypto.timingSafeEqual(
+      Buffer.from(provided),
+      Buffer.from(expected),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export interface ChariowWebhookEvent {
   type: string;
   data: {

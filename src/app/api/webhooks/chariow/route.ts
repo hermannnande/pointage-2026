@@ -29,25 +29,22 @@ interface ChariowPulsePayload {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text();
-    const signature =
-      req.headers.get("x-chariow-signature") ??
-      req.headers.get("x-webhook-signature") ??
-      "";
 
-    const hasSecret = !!process.env.CHARIOW_WEBHOOK_SECRET;
-
-    if (hasSecret) {
-      const isValid = chariowService.verifyWebhookSignature(body, signature);
-      if (!isValid) {
-        console.error("Chariow webhook: signature invalide", {
-          hasSignature: !!signature,
-          signatureLength: signature.length,
-        });
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    // Authentification du webhook : Chariow (Pulse) N'ENVOIE PAS de signature
+    // HMAC — le secret partagé se met dans l'URL (`?secret=…`), comme pour nos
+    // autres boutiques. On compare donc le paramètre `secret` de l'URL à
+    // CHARIOW_WEBHOOK_SECRET (timing-safe). Si la variable n'est pas définie,
+    // on laisse passer (rétro-compatibilité, avec un avertissement).
+    const expectedSecret = process.env.CHARIOW_WEBHOOK_SECRET ?? "";
+    if (expectedSecret) {
+      const provided = new URL(req.url).searchParams.get("secret") ?? "";
+      if (!chariowService.safeSecretEquals(provided, expectedSecret)) {
+        console.error("Chariow webhook: secret invalide ou absent dans l'URL");
+        return NextResponse.json({ error: "Invalid secret" }, { status: 401 });
       }
     } else {
       console.warn(
-        "Chariow webhook: CHARIOW_WEBHOOK_SECRET non configuré — signature non vérifiée. À configurer dès que possible.",
+        "Chariow webhook: CHARIOW_WEBHOOK_SECRET non configuré — secret non vérifié. À configurer dès que possible.",
       );
     }
 
