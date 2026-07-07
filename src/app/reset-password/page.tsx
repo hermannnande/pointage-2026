@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { CheckCircle2, Clock, KeyRound, Loader2 } from "lucide-react";
 
@@ -14,7 +14,19 @@ import { Label } from "@/components/ui/label";
 import { resetPasswordAction } from "../(auth)/actions";
 
 export default function ResetPasswordPage() {
+  // useSearchParams exige une frontière Suspense (rendu statique Next).
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Lien envoyé par email (Resend) : /reset-password?token_hash=…&type=recovery
+  const tokenHash = searchParams.get("token_hash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -30,6 +42,7 @@ export default function ResetPasswordPage() {
     const result = await resetPasswordAction({
       password: formData.get("password") as string,
       confirmPassword: formData.get("confirmPassword") as string,
+      tokenHash: tokenHash ?? undefined,
     });
 
     if (!result.success) {
@@ -98,7 +111,13 @@ export default function ResetPasswordPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {error && (
                     <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                      {error}
+                      {error}{" "}
+                      <Link
+                        href="/forgot-password"
+                        className="font-medium underline underline-offset-2"
+                      >
+                        Refaire une demande
+                      </Link>
                     </div>
                   )}
 

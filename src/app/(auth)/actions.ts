@@ -7,6 +7,7 @@ import type { ActionResult } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 import { createMetaEventId, sendCompleteRegistrationToMeta } from "@/lib/meta-conversions";
 import { findOrCreateUser, updateLastLogin } from "@/services/auth.service";
+import { sendPasswordResetEmail } from "@/services/password-reset.service";
 import {
   loginSchema,
   type LoginInput,
@@ -174,24 +175,16 @@ export async function forgotPasswordAction(
     return { success: false, error: "Adresse email invalide" };
   }
 
-  const supabase = await createClient();
-  const headersList = await headers();
-  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    parsed.data.email,
-    { redirectTo: `${origin}/reset-password` },
-  );
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
+  // Envoi via Resend + lien token_hash vers /reset-password (le SMTP
+  // Supabase n'est pas configuré — resetPasswordForEmail n'envoyait rien).
+  // Réponse toujours positive : ne pas révéler si un compte existe.
+  await sendPasswordResetEmail(parsed.data.email);
 
   return { success: true };
 }
 
 export async function resetPasswordAction(
-  input: ResetPasswordInput,
+  input: ResetPasswordInput & { tokenHash?: string },
 ): Promise<ActionResult> {
   const parsed = resetPasswordSchema.safeParse(input);
   if (!parsed.success) {
@@ -205,6 +198,25 @@ export async function resetPasswordAction(
   }
 
   const supabase = await createClient();
+
+  // Lien envoyé par sendPasswordResetEmail : /reset-password?token_hash=…
+  // On vérifie le token de récupération pour créer la session, puis on
+  // met à jour le mot de passe. (Sans token_hash : session déjà présente,
+  // ancien flux conservé.)
+  if (input.tokenHash) {
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      type: "recovery",
+      token_hash: input.tokenHash,
+    });
+    if (otpError) {
+      return {
+        success: false,
+        error:
+          "Ce lien de réinitialisation est expiré ou a déjà été utilisé. " +
+          "Refaites une demande depuis « Mot de passe oublié ».",
+      };
+    }
+  }
 
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
