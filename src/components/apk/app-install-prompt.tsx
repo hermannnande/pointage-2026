@@ -32,9 +32,18 @@ export function AppInstallPrompt({
   showFab = true,
 }: AppInstallPromptProps) {
   const [open, setOpen] = useState(false);
+  // Android uniquement : l'app est un APK Android. Inutile (et trompeur) de
+  // proposer l'installation aux visiteurs iOS ou desktop. Détecté côté client
+  // (après montage) pour éviter tout décalage d'hydratation — `false` au SSR
+  // et au 1er rendu, puis vrai seulement sur Android.
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
-    if (!autoShow) return;
+    const android =
+      typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+    setIsAndroid(android);
+
+    if (!android || !autoShow) return;
     let recentlySeen = false;
     try {
       const raw = window.localStorage.getItem(SEEN_KEY);
@@ -63,7 +72,7 @@ export function AppInstallPrompt({
     <>
       <AppInstallPromo open={open} onOpenChange={handleOpenChange} />
 
-      {showFab && (
+      {showFab && isAndroid && (
         <button
           type="button"
           onClick={() => setOpen(true)}
