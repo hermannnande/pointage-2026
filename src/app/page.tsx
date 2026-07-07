@@ -1,3 +1,4 @@
+import { AppInstallPrompt } from "@/components/apk/app-install-prompt";
 import { MarketingFooter } from "@/components/layout/marketing-footer";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 
@@ -11,6 +12,8 @@ export default function Home() {
         <LandingPage />
       </main>
       <MarketingFooter />
+      {/* Popup d'installation (auto, 1×/14 j) + bouton flottant mobile. */}
+      <AppInstallPrompt />
     </div>
   );
 }
