@@ -1,5 +1,9 @@
 import { APP_URL, DEFAULT_COUNTRY } from "@/lib/constants";
-import { getCountryFromPhone, getLocalPhoneNumber } from "@/lib/phone-country";
+import {
+  getCountryFromPhone,
+  getLocalPhoneNumber,
+  repairLocalNumberForCountry,
+} from "@/lib/phone-country";
 
 const CHARIOW_API_URL =
   process.env.CHARIOW_API_URL || "https://api.chariow.com/v1";
@@ -198,10 +202,14 @@ export async function createCheckoutSession(params: ChariowCheckoutParams) {
   // le `country` (paramètre) qu'en fallback (numéro local sans préfixe).
   const rawPhone = customerPhone?.trim() || companyPhone?.trim() || "";
   const localDigits = getLocalPhoneNumber(rawPhone).replace(/\D/g, "");
-  const phoneNumber = localDigits.length >= 6 ? localDigits : "0000000000";
 
   const phoneCountry = getCountryFromPhone(rawPhone);
   const countryCode = (phoneCountry ?? country ?? DEFAULT_COUNTRY).toUpperCase();
+
+  // Répare les numéros CI/BJ/GA dont le 0 initial a été perdu (anciennes
+  // versions de l'app mobile, ou numéro mal saisi puis sauvegardé en profil).
+  const repairedDigits = repairLocalNumberForCountry(localDigits, countryCode);
+  const phoneNumber = repairedDigits.length >= 6 ? repairedDigits : "0000000000";
 
   const publicAppUrl = getPublicAppUrl();
 

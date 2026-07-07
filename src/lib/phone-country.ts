@@ -243,6 +243,44 @@ export function getCountryFromPhone(phone: string | null | undefined): string | 
 }
 
 /**
+ * Répare la partie locale d'un numéro pour les pays dont le 0 initial FAIT
+ * PARTIE du numéro (renumérotations à plan fermé) et où il a pu être perdu
+ * par une normalisation trop agressive (app mobile < 1.0.16, saisie user) :
+ *   - CI (2021) : mobiles = 10 chiffres 01/05/07 + 8. "778030075" → "0778030075"
+ *   - BJ (2024) : tous = 10 chiffres 01 + ancien numéro. "97000000" → "0197000000"
+ *   - GA (2020) : mobiles = 9 chiffres 06x/07x. "74123456" → "074123456"
+ * Sans cette réparation, Chariow rejette la vente avec
+ * "Invalid phone number. Check the number and country code."
+ * Les numéros déjà corrects sont retournés tels quels.
+ */
+export function repairLocalNumberForCountry(
+  local: string,
+  country: string,
+): string {
+  const digits = local.replace(/\D/g, "");
+  switch (country.toUpperCase()) {
+    case "CI":
+      // Mobile à 9 chiffres commençant par 1/5/7 : le 0 du préfixe
+      // 01/05/07 a été perdu.
+      if (/^[157]\d{8}$/.test(digits)) return `0${digits}`;
+      return digits;
+    case "BJ":
+      // "1XXXXXXXX" : 0 du préfixe 01 perdu.
+      if (/^1\d{8}$/.test(digits)) return `0${digits}`;
+      // Ancien format 8 chiffres (avant renumérotation ARCEP nov. 2024) :
+      // le préfixe 01 est obligatoire désormais.
+      if (/^[4-9]\d{7}$/.test(digits)) return `01${digits}`;
+      return digits;
+    case "GA":
+      // Mobile à 8 chiffres commençant par 6/7 : 0 initial perdu.
+      if (/^[67]\d{7}$/.test(digits)) return `0${digits}`;
+      return digits;
+    default:
+      return digits;
+  }
+}
+
+/**
  * Retourne uniquement la partie numéro (sans préfixe international).
  * Utile pour Chariow qui veut le `phone.number` séparé du `phone.country_code`.
  */
