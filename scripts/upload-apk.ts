@@ -28,9 +28,9 @@ const PUBSPEC_PATH = "../ocontrole_mobile/pubspec.yaml";
 /** Notes de version affichées dans le popup de mise à jour de l'app.
  *  Modifier ici avant chaque publication (ou laisser vide). */
 const RELEASE_NOTES =
-  "Les notifications de mise à jour fonctionnent enfin correctement. " +
-  "Inclut aussi : mot de passe oublié par email, paiement corrigé pour tous " +
-  "les pays, et indicatif automatique selon votre pays.";
+  "Mot de passe oublié : réinitialisez-le directement dans l'application. " +
+  "Notifications de mise à jour corrigées, email pro OControle, paiement " +
+  "fiabilisé pour tous les pays.";
 
 /**
  * Offset d'ABI appliqué par `flutter build apk --split-per-abi` : le
