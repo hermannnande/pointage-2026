@@ -28,19 +28,41 @@ const PUBSPEC_PATH = "../ocontrole_mobile/pubspec.yaml";
 /** Notes de version affichées dans le popup de mise à jour de l'app.
  *  Modifier ici avant chaque publication (ou laisser vide). */
 const RELEASE_NOTES =
-  "Mot de passe oublié opérationnel (email de réinitialisation), paiement " +
-  "corrigé pour tous les pays, indicatif automatique selon votre pays, et " +
-  "correction des lieux affichés après changement de compte.";
+  "Les notifications de mise à jour fonctionnent enfin correctement. " +
+  "Inclut aussi : mot de passe oublié par email, paiement corrigé pour tous " +
+  "les pays, et indicatif automatique selon votre pays.";
+
+/**
+ * Offset d'ABI appliqué par `flutter build apk --split-per-abi` : le
+ * versionCode réellement installé sur un téléphone arm64 (~99 % du parc)
+ * vaut `2000 + buildNumber` (armeabi-v7a → 1000+, x86_64 → 4000+).
+ *
+ * On publie donc la valeur AVEC l'offset arm64 pour que même les APK déjà
+ * installés — dont l'ancien comparateur lisait la valeur brute (2xxx) — voient
+ * la nouvelle version comme supérieure et proposent enfin la mise à jour.
+ * L'app corrigée (≥ 1.0.22) retire l'offset des deux côtés, donc la
+ * comparaison reste juste pour elle aussi. Cf. app_update.dart `_logicalBuild`.
+ */
+const ARM64_ABI_OFFSET = 2000;
 
 /** Lit `version: 1.0.15+16` du pubspec → { versionName, versionCode }. */
-function readAppVersion(): { versionName: string; versionCode: number } {
+function readAppVersion(): {
+  versionName: string;
+  versionCode: number;
+  publishedVersionCode: number;
+} {
   const pubspec = readFileSync(resolve(PUBSPEC_PATH), "utf-8");
   const match = pubspec.match(/^version:\s*([\d.]+)\+(\d+)\s*$/m);
   if (!match) {
     console.error(`Version introuvable dans ${PUBSPEC_PATH} (format attendu : version: x.y.z+n)`);
     process.exit(1);
   }
-  return { versionName: match[1], versionCode: parseInt(match[2], 10) };
+  const versionCode = parseInt(match[2], 10);
+  return {
+    versionName: match[1],
+    versionCode,
+    publishedVersionCode: ARM64_ABI_OFFSET + versionCode,
+  };
 }
 
 const VARIANTS = [
@@ -123,11 +145,13 @@ async function main() {
 
   // 3) Publier version.json — consommé par /api/mobile/v1/app/version pour
   //    que l'app installée propose la mise à jour à l'utilisateur.
-  const { versionName, versionCode } = readAppVersion();
+  const { versionName, versionCode, publishedVersionCode } = readAppVersion();
   const versionPayload = JSON.stringify(
     {
       versionName,
-      versionCode,
+      // Publié AVEC l'offset arm64 (cf. ARM64_ABI_OFFSET) pour que les APK
+      // déjà installés détectent la mise à jour. L'app corrigée renormalise.
+      versionCode: publishedVersionCode,
       apkUrl: "https://ocontrole.com/download/apk",
       apk32Url: "https://ocontrole.com/download/apk?arch=32",
       notes: RELEASE_NOTES,
@@ -147,7 +171,10 @@ async function main() {
     console.error("Erreur upload version.json :", versionErr.message);
     process.exit(1);
   }
-  console.log(`   ✅ version.json publié : ${versionName} (code ${versionCode})`);
+  console.log(
+    `   ✅ version.json publié : ${versionName} ` +
+      `(code publié ${publishedVersionCode}, build pubspec ${versionCode})`,
+  );
 
   console.log("");
   console.log("Terminé. Le site sert l'APK via /download/apk (et ?arch=32).");
