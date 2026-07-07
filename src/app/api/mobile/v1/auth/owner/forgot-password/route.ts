@@ -32,7 +32,9 @@ export async function POST(request: Request) {
   const parsed = await parseAndValidateBody(request, forgotSchema);
   if (!parsed.ok) return parsed.response;
 
-  await sendPasswordResetEmail(parsed.data.email);
+  // fromApp : la page web /reset-password proposera « Ouvrir dans
+  // l'application » pour finir la réinitialisation directement dans l'APK.
+  await sendPasswordResetEmail(parsed.data.email, { fromApp: true });
 
   return ok({ sent: true });
 }

@@ -23,7 +23,10 @@ import { getPublicAppUrl } from "@/services/chariow.service";
 import { sendEmail } from "@/lib/email/send-email";
 import { createServiceClient } from "@/lib/supabase/server";
 
-export async function sendPasswordResetEmail(email: string): Promise<void> {
+export async function sendPasswordResetEmail(
+  email: string,
+  opts: { fromApp?: boolean } = {},
+): Promise<void> {
   try {
     const supabase = await createServiceClient();
     const { data, error } = await supabase.auth.admin.generateLink({
@@ -39,9 +42,18 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
       return;
     }
 
-    const resetUrl = `${getPublicAppUrl()}/reset-password?token_hash=${encodeURIComponent(
-      data.properties.hashed_token,
-    )}&type=recovery`;
+    // Le lien de l'email est TOUJOURS une URL https (fiable dans tous les
+    // clients mail — un lien `app.ocontrole://` n'est souvent pas cliquable
+    // sous Gmail). Quand la demande vient de l'app, on ajoute `platform=app` :
+    // la page web /reset-password propose alors un bouton « Ouvrir dans
+    // l'application » qui déclenche le deep link `app.ocontrole://reset-password`
+    // (le schéma custom fonctionne bien depuis une page web).
+    const params = new URLSearchParams({
+      token_hash: data.properties.hashed_token,
+      type: "recovery",
+    });
+    if (opts.fromApp) params.set("platform", "app");
+    const resetUrl = `${getPublicAppUrl()}/reset-password?${params.toString()}`;
 
     const sent = await sendEmail({
       to: email,

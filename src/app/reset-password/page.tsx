@@ -27,6 +27,13 @@ function ResetPasswordContent() {
   const searchParams = useSearchParams();
   // Lien envoyé par email (Resend) : /reset-password?token_hash=…&type=recovery
   const tokenHash = searchParams.get("token_hash");
+  // Demande initiée depuis l'APK → proposer de finir dans l'application.
+  const fromApp = searchParams.get("platform") === "app";
+  const appDeepLink = tokenHash
+    ? `app.ocontrole://reset-password?token_hash=${encodeURIComponent(
+        tokenHash,
+      )}&type=recovery`
+    : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -105,6 +112,23 @@ function ResetPasswordContent() {
                 Choisissez un nouveau mot de passe sécurisé
               </p>
             </div>
+
+            {fromApp && appDeepLink && (
+              <Card className="mb-4 border-primary/40 bg-primary/5">
+                <CardContent className="p-4">
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    Vous avez demandé la réinitialisation depuis l&apos;application.
+                    Ouvrez OControle pour définir votre nouveau mot de passe.
+                  </p>
+                  <Button className="w-full" size="lg" asChild>
+                    <a href={appDeepLink}>Ouvrir dans l&apos;application</a>
+                  </Button>
+                  <p className="mt-3 text-center text-xs text-muted-foreground">
+                    ou définissez-le ici dans le navigateur
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardContent className="p-6">
