@@ -785,6 +785,127 @@ export async function getDashboardAlerts() {
   };
 }
 
+// ─── Messages WhatsApp (WasenderAPI) ─────────────────────────
+// Journal des messages automatiques envoyés : qui, quand, quel type,
+// statut d'envoi. Alimente la page super-admin "Messages WhatsApp".
+
+export type WhatsAppFilter = {
+  type?: string;
+  status?: "SENT" | "FAILED" | "PENDING";
+  search?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export async function getWhatsAppMessages(filters: WhatsAppFilter = {}) {
+  const { type, status, search, page = 1, pageSize = 30 } = filters;
+
+  const where: Record<string, unknown> = {};
+  if (type) where.type = type;
+  if (status) where.status = status;
+  if (search) {
+    where.OR = [
+      { phone: { contains: search } },
+      { content: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const [total, messages] = await Promise.all([
+    prisma.whatsAppMessage.count({ where }),
+    prisma.whatsAppMessage.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  // Résolution des noms d'entreprise / utilisateur (pas de relation Prisma
+  // sur ce modèle : companyId/userId sont volontairement de simples strings).
+  const companyIds = [...new Set(messages.map((m) => m.companyId).filter((v): v is string => !!v))];
+  const userIds = [...new Set(messages.map((m) => m.userId).filter((v): v is string => !!v))];
+
+  const [companies, users] = await Promise.all([
+    companyIds.length
+      ? prisma.company.findMany({ where: { id: { in: companyIds } }, select: { id: true, name: true } })
+      : Promise.resolve([] as { id: string; name: string }[]),
+    userIds.length
+      ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true } })
+      : Promise.resolve([] as { id: string; fullName: string }[]),
+  ]);
+
+  const companyMap = new Map(companies.map((c) => [c.id, c.name]));
+  const userMap = new Map(users.map((u) => [u.id, u.fullName]));
+
+  return {
+    data: messages.map((m) => ({
+      id: m.id,
+      phone: m.phone,
+      type: m.type,
+      status: m.status,
+      error: m.error,
+      content: m.content,
+      createdAt: m.createdAt,
+      companyId: m.companyId,
+      companyName: m.companyId ? (companyMap.get(m.companyId) ?? null) : null,
+      userName: m.userId ? (userMap.get(m.userId) ?? null) : null,
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+}
+
+export async function getWhatsAppKPIs() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const since7 = new Date();
+  since7.setDate(since7.getDate() - 7);
+  const since30 = new Date();
+  since30.setDate(since30.getDate() - 30);
+
+  const [total, sentToday, sent7d, failed30d, byType, trendRows] = await Promise.all([
+    prisma.whatsAppMessage.count(),
+    prisma.whatsAppMessage.count({ where: { createdAt: { gte: today }, status: "SENT" } }),
+    prisma.whatsAppMessage.count({ where: { createdAt: { gte: since7 }, status: "SENT" } }),
+    prisma.whatsAppMessage.count({ where: { createdAt: { gte: since30 }, status: "FAILED" } }),
+    prisma.whatsAppMessage.groupBy({
+      by: ["type"],
+      _count: { id: true },
+    }),
+    prisma.whatsAppMessage.findMany({
+      where: { createdAt: { gte: since30 } },
+      select: { createdAt: true, status: true },
+    }),
+  ]);
+
+  // Tendance 30 jours : envoyés vs échoués par jour.
+  const trendMap = new Map<string, { day: string; envoyes: number; echoues: number }>();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    trendMap.set(key, { day: key, envoyes: 0, echoues: 0 });
+  }
+  for (const r of trendRows) {
+    const key = r.createdAt.toISOString().slice(0, 10);
+    const b = trendMap.get(key);
+    if (!b) continue;
+    if (r.status === "FAILED") b.echoues++;
+    else b.envoyes++;
+  }
+
+  return {
+    total,
+    sentToday,
+    sent7d,
+    failed30d,
+    byType: byType.map((t) => ({ type: t.type, count: t._count.id })),
+    trend: Array.from(trendMap.values()),
+  };
+}
+
 // ─── Flux temps réel (dernières activités croisées) ──────────
 
 export type LiveFeedItem = {

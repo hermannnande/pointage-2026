@@ -17,6 +17,7 @@ import {
   Smartphone,
   UserPlus,
   AlertTriangle,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/super-admin/employees", label: "Employés", icon: Users },
       { href: "/super-admin/trials", label: "Essais gratuits", icon: FlaskConical },
       { href: "/super-admin/mobile-app", label: "App mobile", icon: Smartphone },
+      { href: "/super-admin/whatsapp", label: "Messages WhatsApp", icon: MessageCircle, isNew: true },
     ],
   },
   {

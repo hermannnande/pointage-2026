@@ -49,3 +49,13 @@ export async function getLiveFeedAction(limit = 25) {
   await requireSuperAdmin();
   return analytics.getLiveFeed(limit);
 }
+
+export async function getWhatsAppMessagesAction(filters: analytics.WhatsAppFilter = {}) {
+  await requireSuperAdmin();
+  return analytics.getWhatsAppMessages(filters);
+}
+
+export async function getWhatsAppKPIsAction() {
+  await requireSuperAdmin();
+  return analytics.getWhatsAppKPIs();
+}
