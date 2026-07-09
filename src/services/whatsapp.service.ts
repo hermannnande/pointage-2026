@@ -56,6 +56,8 @@ export function toE164(
 
 // ─── Client WasenderAPI ──────────────────────────────────────
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function callWasender(to: string, text: string): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.WASENDER_API_KEY;
   if (!apiKey) {
@@ -63,27 +65,52 @@ async function callWasender(to: string, text: string): Promise<{ ok: boolean; er
     return { ok: false, error: "WASENDER_API_KEY manquante" };
   }
 
-  try {
-    const res = await fetch(`${WASENDER_API_URL}/send-message`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ to, text }),
-    });
+  // WasenderAPI (protection de compte) : 1 message max toutes les 5 s →
+  // en cas de 429 on attend `retry_after` (ou 6 s) et on réessaie.
+  const maxAttempts = 3;
+  let lastError = "unknown";
 
-    if (!res.ok) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${WASENDER_API_URL}/send-message`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ to, text }),
+      });
+
+      if (res.ok) return { ok: true };
+
       const body = await res.text();
-      console.error(`[WhatsApp] Échec envoi vers ${to}: ${res.status} ${body.slice(0, 300)}`);
-      return { ok: false, error: `HTTP ${res.status}: ${body.slice(0, 300)}` };
+      lastError = `HTTP ${res.status}: ${body.slice(0, 300)}`;
+
+      if (res.status === 429 && attempt < maxAttempts) {
+        let waitSec = 6;
+        try {
+          const parsed = JSON.parse(body) as { retry_after?: number };
+          if (parsed.retry_after && parsed.retry_after > 0) waitSec = parsed.retry_after + 1;
+        } catch {
+          // garde le défaut
+        }
+        await sleep(waitSec * 1000);
+        continue;
+      }
+
+      console.error(`[WhatsApp] Échec envoi vers ${to}: ${lastError}`);
+      return { ok: false, error: lastError };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "unknown";
+      if (attempt < maxAttempts) {
+        await sleep(3000);
+        continue;
+      }
     }
-    return { ok: true };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "unknown";
-    console.error(`[WhatsApp] Erreur réseau vers ${to}:`, msg);
-    return { ok: false, error: msg };
   }
+
+  console.error(`[WhatsApp] Erreur envoi vers ${to} après ${maxAttempts} tentatives:`, lastError);
+  return { ok: false, error: lastError };
 }
 
 /**
@@ -109,6 +136,7 @@ export async function sendWhatsAppOnce(params: {
 
     // Dédup : on tente l'insertion d'abord ; si la clé existe déjà,
     // le message a déjà été envoyé (ou est en cours) → on sort.
+    // Exception : un envoi précédent en échec (FAILED) peut être retenté.
     try {
       await prisma.whatsAppMessage.create({
         data: {
@@ -122,8 +150,16 @@ export async function sendWhatsAppOnce(params: {
         },
       });
     } catch {
-      // Violation d'unicité sur dedupeKey → déjà traité.
-      return { sent: false, skipped: true };
+      // Violation d'unicité sur dedupeKey → déjà traité, sauf si FAILED.
+      const existing = await prisma.whatsAppMessage.findUnique({
+        where: { dedupeKey },
+        select: { status: true },
+      });
+      if (existing?.status !== "FAILED") return { sent: false, skipped: true };
+      await prisma.whatsAppMessage.update({
+        where: { dedupeKey },
+        data: { status: "PENDING", error: null, phone: to, content: text },
+      });
     }
 
     const result = await callWasender(to, text);
