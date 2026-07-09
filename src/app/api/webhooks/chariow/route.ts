@@ -3,6 +3,11 @@ import type { BillingCycle } from "@prisma/client";
 
 import * as billingService from "@/services/billing.service";
 import * as chariowService from "@/services/chariow.service";
+import {
+  sendPaymentSuccessWhatsApp,
+  sendPaymentFailedWhatsApp,
+  sendCheckoutAbandonedWhatsApp,
+} from "@/services/whatsapp.service";
 
 interface ChariowPulsePayload {
   event: string;
@@ -94,14 +99,27 @@ export async function POST(req: NextRequest) {
               : undefined,
           },
         );
+        // WhatsApp de confirmation (idempotent par saleId, non-bloquant).
+        await sendPaymentSuccessWhatsApp({
+          companyId,
+          saleId: sale?.id ?? "",
+          amount: sale?.amount?.value,
+          currency: sale?.amount?.currency,
+        });
         break;
 
       case "failed.sale":
         await billingService.handlePaymentFailed(companyId, sale?.id);
+        // WhatsApp d'aide : explique les causes fréquentes d'échec et
+        // propose un accompagnement pas à pas (idempotent par saleId).
+        await sendPaymentFailedWhatsApp({ companyId, saleId: sale?.id });
         break;
 
       case "abandoned.sale":
         console.log(`Sale abandonnée: ${sale?.id}`);
+        // WhatsApp d'accompagnement : le client a démarré le paiement sans
+        // le finaliser — on lui propose de l'aide (idempotent par saleId).
+        await sendCheckoutAbandonedWhatsApp({ companyId, saleId: sale?.id });
         break;
 
       default:

@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { GRACE_PERIOD_DAYS } from "@/lib/constants";
 import { sendBillingMilestone } from "@/services/billing-notifications.service";
+import {
+  sendTrialReminderWhatsApp,
+  sendTrialEndedWhatsApp,
+} from "@/services/whatsapp.service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -101,11 +105,25 @@ export async function GET(req: NextRequest) {
             daysRemaining: 0,
             periodKey,
           });
+          // WhatsApp fin d'essai (idempotent via dedupeKey).
+          await sendTrialEndedWhatsApp({
+            companyId: sub.companyId,
+            subscriptionId: sub.id,
+            periodKey,
+          });
         } else if (daysLeft <= 3) {
           await trackNotification({
             milestone: "trial_j3",
             daysRemaining: daysLeft,
             periodKey,
+          });
+          // WhatsApp quotidien pendant les 3 jours d'essai : rappel de fin
+          // d'essai avec lien de paiement (app installée ou web). La
+          // dedupeKey inclut la date du jour → 1 message max par jour.
+          await sendTrialReminderWhatsApp({
+            companyId: sub.companyId,
+            subscriptionId: sub.id,
+            daysLeft,
           });
         }
         continue;

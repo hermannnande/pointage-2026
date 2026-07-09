@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createMetaEventId, sendCompleteRegistrationToMeta } from "@/lib/meta-conversions";
 import { findOrCreateUser, updateLastLogin } from "@/services/auth.service";
 import { sendPasswordResetEmail } from "@/services/password-reset.service";
+import { sendWelcomeWhatsApp } from "@/services/whatsapp.service";
 import {
   loginSchema,
   type LoginInput,
@@ -100,6 +101,20 @@ export async function signupAction(
     });
   } catch {
     // Non-bloquant : l'inscription doit toujours réussir même si Meta est indisponible.
+  }
+
+  // Message WhatsApp de bienvenue (bienfaits + liens app Android / web iPhone).
+  // Non-bloquant et idempotent (dedupeKey welcome:<userId>).
+  if (parsed.data.phone) {
+    try {
+      await sendWelcomeWhatsApp({
+        userId: user.id,
+        fullName: parsed.data.fullName,
+        phone: parsed.data.phone,
+      });
+    } catch {
+      // L'inscription doit toujours réussir même si WhatsApp est indisponible.
+    }
   }
 
   return { success: true, data: { userId: user.id, metaEventId } };

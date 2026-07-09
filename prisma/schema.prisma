@@ -922,6 +922,29 @@ model AdminNote {
   @@map("admin_notes")
 }
 
+/**
+ * Journal des messages WhatsApp envoyés via WasenderAPI (bienvenue à
+ * l'inscription, rappels de fin d'essai, suivi des paiements). `dedupeKey`
+ * unique garantit qu'un même message n'est jamais envoyé deux fois
+ * (idempotence des crons et webhooks).
+ */
+model WhatsAppMessage {
+  id        String   @id @default(cuid())
+  companyId String?  @map("company_id")
+  userId    String?  @map("user_id")
+  phone     String
+  type      String
+  dedupeKey String   @unique @map("dedupe_key")
+  content   String   @db.Text
+  status    String   @default("SENT")
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([companyId, createdAt])
+  @@index([type, createdAt])
+  @@map("whatsapp_messages")
+}
+
 model SuperAdminLog {
   id         String   @id @default(cuid())
   actorId    String   @map("actor_id")
