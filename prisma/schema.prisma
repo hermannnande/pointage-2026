@@ -945,6 +945,29 @@ model WhatsAppMessage {
   @@map("whatsapp_messages")
 }
 
+/**
+ * Journal des emails transactionnels de relance (bienvenue à l'inscription,
+ * rappels de fin d'essai, suivi des paiements) envoyés via Resend. Même
+ * mécanique que WhatsAppMessage : `dedupeKey` unique = jamais deux fois le
+ * même message ; un envoi FAILED est retentable.
+ */
+model EmailMessage {
+  id        String   @id @default(cuid())
+  companyId String?  @map("company_id")
+  userId    String?  @map("user_id")
+  email     String
+  type      String
+  dedupeKey String   @unique @map("dedupe_key")
+  subject   String
+  status    String   @default("SENT")
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([companyId, createdAt])
+  @@index([type, createdAt])
+  @@map("email_messages")
+}
+
 model SuperAdminLog {
   id         String   @id @default(cuid())
   actorId    String   @map("actor_id")
