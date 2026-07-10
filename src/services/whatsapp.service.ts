@@ -268,13 +268,13 @@ export async function sendTrialReminderWhatsApp(params: {
   companyId: string;
   subscriptionId: string;
   daysLeft: number;
-}): Promise<void> {
+}): Promise<{ sent: boolean }> {
   const { companyId, subscriptionId, daysLeft } = params;
   const [contact, appInstalled] = await Promise.all([
     getOwnerContact(companyId),
     hasMobileApp(companyId),
   ]);
-  if (!contact.phone) return;
+  if (!contact.phone) return { sent: false };
 
   const when =
     daysLeft <= 0
@@ -292,7 +292,7 @@ export async function sendTrialReminderWhatsApp(params: {
 
   // Clé par jour → un message par jour maximum pendant la fenêtre de rappel.
   const dayKey = new Date().toISOString().slice(0, 10);
-  await sendWhatsAppOnce({
+  const result = await sendWhatsAppOnce({
     phone: contact.phone,
     text,
     type: "trial_reminder",
@@ -301,6 +301,7 @@ export async function sendTrialReminderWhatsApp(params: {
     userId: contact.userId,
     fallbackCountry: contact.country,
   });
+  return { sent: result.sent };
 }
 
 /** Fin d'essai (jour J) — message distinct du rappel quotidien. */
@@ -308,13 +309,13 @@ export async function sendTrialEndedWhatsApp(params: {
   companyId: string;
   subscriptionId: string;
   periodKey: string;
-}): Promise<void> {
+}): Promise<{ sent: boolean }> {
   const { companyId, subscriptionId, periodKey } = params;
   const [contact, appInstalled] = await Promise.all([
     getOwnerContact(companyId),
     hasMobileApp(companyId),
   ]);
-  if (!contact.phone) return;
+  if (!contact.phone) return { sent: false };
 
   const text =
     `🔔 Bonjour ${contact.name}, votre essai gratuit *OControle* est *terminé*.\n\n` +
@@ -323,7 +324,7 @@ export async function sendTrialEndedWhatsApp(params: {
     `💳 Paiement par Mobile Money (Orange, MTN, Moov, Wave) en 2 minutes.\n\n` +
     `Un souci pour payer ou une question ? Répondez à ce message et nous vous aidons immédiatement. 🤝`;
 
-  await sendWhatsAppOnce({
+  const result = await sendWhatsAppOnce({
     phone: contact.phone,
     text,
     type: "trial_ended",
@@ -332,6 +333,7 @@ export async function sendTrialEndedWhatsApp(params: {
     userId: contact.userId,
     fallbackCountry: contact.country,
   });
+  return { sent: result.sent };
 }
 
 // ─── 3. Suivi des paiements ──────────────────────────────────

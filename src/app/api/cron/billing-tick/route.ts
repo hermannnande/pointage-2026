@@ -9,12 +9,28 @@ import {
 } from "@/services/whatsapp.service";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
+
+// ─── Anti-spam WhatsApp ──────────────────────────────────────
+// WasenderAPI (numéro WhatsApp classique) : un burst de dizaines de
+// messages identiques = risque de bannissement du numéro. Stratégie :
+//   • max 15 messages WhatsApp par exécution du cron ;
+//   • cron toutes les 2 h en journée (voir vercel.json) → le backlog se
+//     draine progressivement, la dedupeKey par jour évite tout doublon ;
+//   • pause aléatoire 5–8 s entre deux envois (limite API + rythme humain) ;
+//   • pas de message « essai terminé » pour un essai expiré depuis plus de
+//     MAX_TRIAL_ENDED_AGE_DAYS jours — la transition se fait en silence.
+const MAX_WHATSAPP_PER_RUN = 15;
+const MAX_TRIAL_ENDED_AGE_DAYS = 5;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const humanPause = () => sleep(5000 + Math.floor(Math.random() * 3000));
 
 /**
- * CRON quotidien — transitions de statut et notifications de renouvellement.
+ * CRON — transitions de statut et notifications de renouvellement.
  *
- * Configuration Vercel : voir `vercel.json` (schedule: "0 8 * * *" → 8h UTC).
+ * Configuration Vercel : voir `vercel.json` (toutes les 2 h, 6h–20h UTC).
+ * Toutes les notifications sont idempotentes (dedupeKey) → rejouable sans
+ * risque de doublon.
  *
  * Sécurité : protégé par `Authorization: Bearer ${CRON_SECRET}`.
  * Vercel injecte automatiquement ce header sur les CRON natifs.
@@ -42,10 +58,30 @@ export async function GET(req: NextRequest) {
     transitionedToExpired: 0,
     notificationsCreated: 0,
     notificationsSkipped: 0,
+    whatsappSent: 0,
+    whatsappCapReached: false,
     errors: [] as { companyId: string; error: string }[],
   };
 
-  // 2) Charger toutes les subscriptions actives ou en grâce ou en essai
+  // Budget WhatsApp de cette exécution (anti-spam, voir constantes plus haut).
+  let whatsappBudget = MAX_WHATSAPP_PER_RUN;
+  const spendWhatsApp = async (send: () => Promise<{ sent: boolean }>) => {
+    if (whatsappBudget <= 0) {
+      summary.whatsappCapReached = true;
+      return;
+    }
+    const { sent } = await send();
+    if (sent) {
+      whatsappBudget--;
+      summary.whatsappSent++;
+      // Rythme humain entre deux envois réels (les skips ne comptent pas).
+      if (whatsappBudget > 0) await humanPause();
+    }
+  };
+
+  // 2) Charger toutes les subscriptions actives ou en grâce ou en essai.
+  // Tri par fin de période croissante → si le budget WhatsApp est épuisé,
+  // ce sont les moins urgents qui attendent l'exécution suivante.
   const subs = await prisma.subscription.findMany({
     where: {
       status: { in: ["TRIALING", "ACTIVE", "GRACE_PERIOD", "PAST_DUE"] },
@@ -54,6 +90,7 @@ export async function GET(req: NextRequest) {
       plan: { select: { name: true } },
       company: { select: { id: true, name: true } },
     },
+    orderBy: { currentPeriodEnd: "asc" },
   });
 
   summary.scanned = subs.length;
@@ -105,12 +142,19 @@ export async function GET(req: NextRequest) {
             daysRemaining: 0,
             periodKey,
           });
-          // WhatsApp fin d'essai (idempotent via dedupeKey).
-          await sendTrialEndedWhatsApp({
-            companyId: sub.companyId,
-            subscriptionId: sub.id,
-            periodKey,
-          });
+          // WhatsApp fin d'essai (idempotent via dedupeKey) — uniquement si
+          // l'essai vient de se terminer : un « votre essai est terminé »
+          // envoyé des semaines après coup serait perçu comme du spam.
+          const daysSinceEnd = -daysLeft;
+          if (daysSinceEnd <= MAX_TRIAL_ENDED_AGE_DAYS) {
+            await spendWhatsApp(() =>
+              sendTrialEndedWhatsApp({
+                companyId: sub.companyId,
+                subscriptionId: sub.id,
+                periodKey,
+              }),
+            );
+          }
         } else if (daysLeft <= 3) {
           await trackNotification({
             milestone: "trial_j3",
@@ -120,11 +164,13 @@ export async function GET(req: NextRequest) {
           // WhatsApp quotidien pendant les 3 jours d'essai : rappel de fin
           // d'essai avec lien de paiement (app installée ou web). La
           // dedupeKey inclut la date du jour → 1 message max par jour.
-          await sendTrialReminderWhatsApp({
-            companyId: sub.companyId,
-            subscriptionId: sub.id,
-            daysLeft,
-          });
+          await spendWhatsApp(() =>
+            sendTrialReminderWhatsApp({
+              companyId: sub.companyId,
+              subscriptionId: sub.id,
+              daysLeft,
+            }),
+          );
         }
         continue;
       }
