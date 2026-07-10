@@ -164,6 +164,14 @@ export async function sendWhatsAppOnce(params: {
 }): Promise<{ sent: boolean; skipped: boolean }> {
   const { phone, text, type, dedupeKey, companyId, userId, fallbackCountry } = params;
 
+  // Kill switch global : WHATSAPP_SENDS_DISABLED=1 suspend TOUS les envois
+  // (cron, webhooks, inscription) sans rien journaliser — les dedupeKeys ne
+  // sont pas consommées, les messages repartiront à la réactivation.
+  if (process.env.WHATSAPP_SENDS_DISABLED === "1") {
+    console.warn(`[WhatsApp] Envois suspendus (WHATSAPP_SENDS_DISABLED=1) — ${type} ignoré`);
+    return { sent: false, skipped: true };
+  }
+
   try {
     const to = toE164(phone, fallbackCountry);
     if (!to) return { sent: false, skipped: true };
