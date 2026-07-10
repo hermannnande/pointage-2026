@@ -6,6 +6,7 @@ import { sendBillingMilestone } from "@/services/billing-notifications.service";
 import {
   sendTrialReminderWhatsApp,
   sendTrialEndedWhatsApp,
+  getWasenderSessionStatus,
 } from "@/services/whatsapp.service";
 
 export const dynamic = "force-dynamic";
@@ -60,11 +61,25 @@ export async function GET(req: NextRequest) {
     notificationsSkipped: 0,
     whatsappSent: 0,
     whatsappCapReached: false,
+    whatsappSessionStatus: null as string | null,
     errors: [] as { companyId: string; error: string }[],
   };
 
   // Budget WhatsApp de cette exécution (anti-spam, voir constantes plus haut).
+  // Si la session WasenderAPI n'est pas connectée, on n'envoie rien : les
+  // transitions de statut se font quand même, et les rappels du jour seront
+  // envoyés par un run ultérieur une fois la session reconnectée.
   let whatsappBudget = MAX_WHATSAPP_PER_RUN;
+  summary.whatsappSessionStatus = await getWasenderSessionStatus();
+  if (
+    summary.whatsappSessionStatus !== null &&
+    summary.whatsappSessionStatus !== "connected"
+  ) {
+    console.error(
+      `[CRON billing-tick] Session WasenderAPI "${summary.whatsappSessionStatus}" — envois WhatsApp suspendus`,
+    );
+    whatsappBudget = 0;
+  }
   const spendWhatsApp = async (send: () => Promise<{ sent: boolean }>) => {
     if (whatsappBudget <= 0) {
       summary.whatsappCapReached = true;

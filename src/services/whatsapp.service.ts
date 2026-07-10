@@ -58,6 +58,25 @@ export function toE164(
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Statut de la session WhatsApp WasenderAPI ("connected", "logged_out"…).
+ * Renvoie null si le statut n'a pas pu être déterminé (erreur réseau…).
+ */
+export async function getWasenderSessionStatus(): Promise<string | null> {
+  const apiKey = process.env.WASENDER_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(`${WASENDER_API_URL}/status`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) return null;
+    const parsed = (await res.json()) as { status?: string };
+    return parsed.status ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function callWasender(to: string, text: string): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.WASENDER_API_KEY;
   if (!apiKey) {
@@ -81,9 +100,24 @@ async function callWasender(to: string, text: string): Promise<{ ok: boolean; er
         body: JSON.stringify({ to, text }),
       });
 
-      if (res.ok) return { ok: true };
-
       const body = await res.text();
+
+      if (res.ok) {
+        // ⚠️ WasenderAPI peut répondre HTTP 200 avec success:false (ex.
+        // session WhatsApp déconnectée). Un 200 seul ne prouve PAS l'envoi.
+        try {
+          const parsed = JSON.parse(body) as { success?: boolean; message?: string };
+          if (parsed.success === false) {
+            const msg = parsed.message ?? "success:false";
+            console.error(`[WhatsApp] Refus API pour ${to}: ${msg}`);
+            return { ok: false, error: `API: ${msg.slice(0, 300)}` };
+          }
+        } catch {
+          // Corps non-JSON inattendu → on considère l'envoi accepté.
+        }
+        return { ok: true };
+      }
+
       lastError = `HTTP ${res.status}: ${body.slice(0, 300)}`;
 
       if (res.status === 429 && attempt < maxAttempts) {
