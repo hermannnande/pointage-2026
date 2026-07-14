@@ -5,6 +5,7 @@ import type { BillingCycle } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import * as sa from "@/services/super-admin.service";
 import { getWhatsAppNumber } from "@/lib/phone-country";
+import { buildRelanceMessage } from "@/lib/relance-message";
 import type { ActionResult } from "@/types";
 
 async function requireSuperAdmin() {
@@ -178,6 +179,101 @@ export async function getTransactionsAction(filters: sa.TxFilter = {}) {
 export async function getTransactionKPIsAction() {
   await requireSuperAdmin();
   return sa.getTransactionKPIs();
+}
+
+// ─── Relance WhatsApp d'une transaction (page Transactions) ──────
+
+export interface TransactionRelanceData {
+  companyName?: string;
+  /** Nom du propriétaire (destinataire). */
+  ownerName?: string;
+  /** Téléphone du propriétaire tel que stocké (affichage). */
+  ownerPhone?: string;
+  /** Téléphone du propriétaire au format international pour wa.me. */
+  ownerWhatsapp?: string;
+  /** Lien de paiement récupéré depuis Chariow (si disponible). */
+  checkoutUrl?: string;
+  /** Message de relance pré-rédigé (avec le lien). */
+  message: string;
+}
+
+/**
+ * Prépare une relance WhatsApp pour une transaction : résout le propriétaire de
+ * l'entreprise (destinataire) et tente de récupérer le lien de paiement de la
+ * vente Chariow, puis construit le message. Aucun envoi — c'est le super-admin
+ * qui expédie via wa.me.
+ */
+export async function getTransactionRelanceAction(input: {
+  companyId: string;
+  chariowSaleId?: string | null;
+}): Promise<ActionResult<TransactionRelanceData>> {
+  try {
+    await requireSuperAdmin();
+    const { prisma } = await import("@/lib/prisma/client");
+
+    const company = await prisma.company.findUnique({
+      where: { id: input.companyId },
+      select: {
+        name: true,
+        phone: true,
+        country: true,
+        memberships: {
+          where: { isOwner: true, isActive: true },
+          take: 1,
+          select: { user: { select: { phone: true, fullName: true } } },
+        },
+        subscription: {
+          select: { billingCycle: true, plan: { select: { name: true } } },
+        },
+      },
+    });
+
+    if (!company) {
+      return { success: false, error: "Entreprise introuvable." };
+    }
+
+    const owner = company.memberships[0]?.user;
+    const ownerPhoneRaw = owner?.phone ?? company.phone ?? undefined;
+    const ownerName = owner?.fullName ?? undefined;
+    const ownerWhatsapp = getWhatsAppNumber(ownerPhoneRaw, company.country);
+
+    // Lien de paiement : on interroge Chariow pour récupérer le checkout de la
+    // vente (best-effort ; si absent, le message renvoie vers la facturation).
+    let checkoutUrl: string | undefined;
+    if (input.chariowSaleId) {
+      try {
+        const chariow = await import("@/services/chariow.service");
+        const sale = await chariow.getSale(input.chariowSaleId);
+        checkoutUrl = sale.checkout?.url ?? sale.payment?.checkout_url ?? undefined;
+      } catch (err) {
+        console.error("getTransactionRelance: getSale a échoué", err);
+      }
+    }
+
+    const message = buildRelanceMessage({
+      firstName: ownerName?.split(/\s+/)[0],
+      planLabel: company.subscription?.plan?.name,
+      cycle: company.subscription?.billingCycle,
+      checkoutUrl,
+    });
+
+    return {
+      success: true,
+      data: {
+        companyName: company.name,
+        ownerName,
+        ownerPhone: ownerPhoneRaw,
+        ownerWhatsapp,
+        checkoutUrl,
+        message,
+      },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erreur lors de la préparation de la relance.",
+    };
+  }
 }
 
 // ─── Billing Debug (Chariow) ─────────────────────────────────
