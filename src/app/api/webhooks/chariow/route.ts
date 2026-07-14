@@ -31,6 +31,12 @@ interface ChariowPulsePayload {
   };
 }
 
+// Chariow valide parfois l'URL du Pulse via une requête GET (health-check).
+// On répond 200 pour ne pas provoquer une désactivation du Pulse.
+export async function GET() {
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text();
@@ -78,8 +84,15 @@ export async function POST(req: NextRequest) {
     }
 
     if (!companyId) {
-      console.error("Webhook: company_id introuvable (metadata + fallback email)", payload);
-      return NextResponse.json({ error: "Missing company_id" }, { status: 400 });
+      // On ne peut pas rattacher ce paiement à une entreprise (pas de metadata
+      // ET email inconnu). On ACCUSE quand même réception (200) : un webhook qui
+      // renvoie 4xx finit désactivé par Chariow. Le cas est journalisé pour
+      // réconciliation manuelle via l'API Chariow (listSales/getSale).
+      console.error(
+        "Webhook Chariow: company_id introuvable (metadata + fallback email) — ACK 200 pour ne pas désactiver le Pulse",
+        JSON.stringify({ event: eventType, saleId: sale?.id, email: payload.customer?.email }),
+      );
+      return NextResponse.json({ received: true, unmatched: true });
     }
 
     console.log(`Chariow pulse: ${eventType} | sale=${sale?.id} | company=${companyId}`);
@@ -129,10 +142,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("Webhook error:", err);
-    return NextResponse.json(
-      { error: "Webhook processing error" },
-      { status: 500 },
-    );
+    // On journalise l'erreur mais on ACCUSE réception (200). Chariow désactive
+    // le Pulse après quelques réponses non-2xx ; mieux vaut réconcilier ensuite
+    // via l'API Chariow que de perdre le webhook. (Note : l'auth par secret, si
+    // elle échoue, renvoie 401 avant d'arriver ici — c'est le seul rejet voulu.)
+    console.error("Webhook Chariow error (ACK 200 volontaire):", err);
+    return NextResponse.json({ received: true, error: true });
   }
 }
