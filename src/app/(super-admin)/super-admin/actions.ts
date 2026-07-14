@@ -4,6 +4,7 @@ import type { BillingCycle } from "@prisma/client";
 
 import { createClient } from "@/lib/supabase/server";
 import * as sa from "@/services/super-admin.service";
+import { getWhatsAppNumber } from "@/lib/phone-country";
 import type { ActionResult } from "@/types";
 
 async function requireSuperAdmin() {
@@ -203,6 +204,12 @@ export interface ChariowSaleRow {
   // Données croisées avec notre DB
   companyId?: string;
   companyName?: string;
+  /** Nom du propriétaire (destinataire de la relance). */
+  ownerName?: string;
+  /** Téléphone du propriétaire tel que stocké (affichage). */
+  ownerPhone?: string;
+  /** Téléphone du propriétaire au format international pour wa.me (chiffres seuls). */
+  ownerWhatsapp?: string;
   hasLocalSuccess: boolean;
   hasLocalFailure: boolean;
   hasLocalInitiated: boolean;
@@ -234,8 +241,15 @@ export async function getChariowSalesAction(limit = 100): Promise<{
   const companyIds = Array.from(
     new Set(sales.map((s) => s.custom_metadata?.company_id).filter(Boolean) as string[]),
   );
+  const emails = Array.from(
+    new Set(
+      sales
+        .map((s) => s.customer?.email?.trim().toLowerCase())
+        .filter(Boolean) as string[],
+    ),
+  );
 
-  const [events, companies] = await Promise.all([
+  const [events, companies, emailOwners] = await Promise.all([
     saleIds.length
       ? prisma.billingEvent.findMany({
           where: { chariowSaleId: { in: saleIds } },
@@ -245,7 +259,34 @@ export async function getChariowSalesAction(limit = 100): Promise<{
     companyIds.length
       ? prisma.company.findMany({
           where: { id: { in: companyIds } },
-          select: { id: true, name: true },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            country: true,
+            memberships: {
+              where: { isOwner: true, isActive: true },
+              take: 1,
+              select: { user: { select: { phone: true, fullName: true } } },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    // Résolution du propriétaire via l'email du client Chariow (utile quand la
+    // metadata company_id est absente — cas fréquent en mobile money RDC).
+    emails.length
+      ? prisma.membership.findMany({
+          where: {
+            isOwner: true,
+            isActive: true,
+            user: { email: { in: emails } },
+          },
+          select: {
+            user: { select: { email: true, phone: true, fullName: true } },
+            company: {
+              select: { id: true, name: true, phone: true, country: true },
+            },
+          },
         })
       : Promise.resolve([]),
   ]);
@@ -258,11 +299,48 @@ export async function getChariowSalesAction(limit = 100): Promise<{
     }
     eventsBySale.get(ev.chariowSaleId)!.add(ev.type);
   }
-  const companyById = new Map(companies.map((c) => [c.id, c.name]));
+
+  // Infos propriétaire (destinataire de la relance) indexées par companyId,
+  // + un index email → companyId pour les ventes sans metadata company_id.
+  interface OwnerInfo {
+    name: string;
+    ownerName?: string;
+    ownerPhoneRaw?: string;
+    country?: string;
+  }
+  const ownerByCompanyId = new Map<string, OwnerInfo>();
+  const companyIdByEmail = new Map<string, string>();
+
+  for (const c of companies) {
+    const owner = c.memberships[0]?.user;
+    ownerByCompanyId.set(c.id, {
+      name: c.name,
+      ownerName: owner?.fullName ?? undefined,
+      ownerPhoneRaw: owner?.phone ?? c.phone ?? undefined,
+      country: c.country,
+    });
+  }
+  for (const m of emailOwners) {
+    if (!m.company) continue;
+    const email = m.user?.email?.trim().toLowerCase();
+    if (email) companyIdByEmail.set(email, m.company.id);
+    if (!ownerByCompanyId.has(m.company.id)) {
+      ownerByCompanyId.set(m.company.id, {
+        name: m.company.name,
+        ownerName: m.user?.fullName ?? undefined,
+        ownerPhoneRaw: m.user?.phone ?? m.company.phone ?? undefined,
+        country: m.company.country,
+      });
+    }
+  }
 
   const rows: ChariowSaleRow[] = sales.map((s) => {
     const types = eventsBySale.get(s.id) ?? new Set<string>();
-    const companyId = s.custom_metadata?.company_id;
+    const email = s.customer?.email?.trim().toLowerCase();
+    const companyId =
+      s.custom_metadata?.company_id ??
+      (email ? companyIdByEmail.get(email) : undefined);
+    const ownerInfo = companyId ? ownerByCompanyId.get(companyId) : undefined;
     return {
       saleId: s.id,
       status: s.status,
@@ -283,7 +361,10 @@ export async function getChariowSalesAction(limit = 100): Promise<{
       abandonedAt: s.abandoned_at,
       failedAt: s.failed_at,
       companyId,
-      companyName: companyId ? companyById.get(companyId) : undefined,
+      companyName: ownerInfo?.name,
+      ownerName: ownerInfo?.ownerName,
+      ownerPhone: ownerInfo?.ownerPhoneRaw,
+      ownerWhatsapp: getWhatsAppNumber(ownerInfo?.ownerPhoneRaw, ownerInfo?.country),
       hasLocalSuccess: types.has("payment_success"),
       hasLocalFailure: types.has("payment_failed"),
       hasLocalInitiated: types.has("payment_initiated"),

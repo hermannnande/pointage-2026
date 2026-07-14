@@ -118,7 +118,10 @@ function isBlocked(row: ChariowSaleRow): boolean {
 }
 
 function buildClientMessage(row: ChariowSaleRow): string {
-  const firstName = row.customerFirstName?.trim() || "cher client";
+  // Le message est adressé au PROPRIÉTAIRE de l'entreprise (destinataire de la
+  // relance) : on privilégie son prénom, avec repli sur le prénom Chariow.
+  const ownerFirst = row.ownerName?.trim().split(/\s+/)[0];
+  const firstName = ownerFirst || row.customerFirstName?.trim() || "cher client";
   const planLabel = row.productName || row.planSlug || "votre abonnement";
   const cycle = row.billingCycle === "YEARLY" ? "annuel" : row.billingCycle === "MONTHLY" ? "mensuel" : "";
   const cycleSuffix = cycle ? ` (${cycle})` : "";
@@ -652,8 +655,13 @@ export default function BillingDebugPage() {
                   <p className="font-mono">{messageModal.sale.customerEmail ?? "—"}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase text-slate-500">Téléphone</p>
-                  <p className="font-mono">{messageModal.sale.customerPhone ?? "—"}</p>
+                  <p className="text-[10px] uppercase text-emerald-600">
+                    Destinataire (propriétaire)
+                  </p>
+                  <p className="font-mono">
+                    {messageModal.sale.ownerName ? `${messageModal.sale.ownerName} · ` : ""}
+                    {messageModal.sale.ownerPhone ?? "numéro manquant"}
+                  </p>
                 </div>
               </div>
 
@@ -700,8 +708,10 @@ export default function BillingDebugPage() {
                   </Button>
                 )}
                 {(() => {
+                  // Destinataire = le PROPRIÉTAIRE de l'entreprise (numéro de
+                  // notre base, déjà au format international).
                   const link = buildWhatsAppLink(
-                    messageModal.sale.customerPhone,
+                    messageModal.sale.ownerWhatsapp,
                     messageModal.message,
                   );
                   return link ? (
@@ -712,7 +722,7 @@ export default function BillingDebugPage() {
                       </a>
                     </Button>
                   ) : (
-                    <Button disabled variant="outline" title="Numéro client manquant ou invalide">
+                    <Button disabled variant="outline" title="Numéro du propriétaire manquant dans la fiche entreprise">
                       <MessageCircle className="mr-2 h-4 w-4" />
                       WhatsApp indispo.
                     </Button>

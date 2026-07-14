@@ -305,3 +305,50 @@ export function getLocalPhoneNumber(phone: string | null | undefined): string {
 
   return digits;
 }
+
+/**
+ * Construit un numéro au format international SANS "+" ni espaces, prêt pour
+ * un lien `wa.me/<digits>`.
+ *
+ * - Si le numéro est déjà international (`+225…`, `00225…`), on garde ses
+ *   chiffres tels quels (indicatif inclus).
+ * - Sinon on considère que c'est un numéro LOCAL et on préfixe l'indicatif du
+ *   pays fourni (`countryCode`, ISO alpha-2, défaut CI), après réparation du
+ *   0 initial pour les plans fermés (CI/BJ/GA).
+ *
+ * Retourne `undefined` si le numéro est vide, le pays inconnu, ou le résultat
+ * trop court pour être un numéro valide.
+ */
+export function getWhatsAppNumber(
+  phone: string | null | undefined,
+  countryCode?: string | null,
+): string | undefined {
+  if (!phone) return undefined;
+  const trimmed = phone.trim();
+  if (!trimmed) return undefined;
+
+  // Déjà international ?
+  if (getCountryFromPhone(trimmed)) {
+    let d = trimmed.replace(/[^\d+]/g, "");
+    if (d.startsWith("+")) d = d.slice(1);
+    else if (d.startsWith("00")) d = d.slice(2);
+    d = d.replace(/\D/g, "");
+    return d.length >= 8 ? d : undefined;
+  }
+
+  // Numéro local → on préfixe l'indicatif du pays.
+  const country = (countryCode || "CI").toUpperCase();
+  const prefix = getPhonePrefixForCountry(country);
+  if (!prefix) return undefined;
+
+  let localRaw = getLocalPhoneNumber(trimmed).replace(/\D/g, "");
+  // Garde-fou : numéro déjà international mais sans "+"/"00" (ex. "2250714…")
+  // → on retire l'indicatif en tête pour ne pas le doubler.
+  if (localRaw.startsWith(prefix) && localRaw.length - prefix.length >= 6) {
+    localRaw = localRaw.slice(prefix.length);
+  }
+  const local = repairLocalNumberForCountry(localRaw, country);
+  if (local.length < 6) return undefined;
+
+  return `${prefix}${local}`;
+}
