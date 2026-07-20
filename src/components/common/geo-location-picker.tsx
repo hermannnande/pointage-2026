@@ -360,12 +360,21 @@ export function GeoLocationPicker({
       if (looksLikeUrl(value)) {
         let extracted = extractCoordsFromUrl(value);
 
-        if (!extracted && (value.includes("goo.gl") || value.includes("maps.app"))) {
+        if (!extracted && (value.includes("goo.gl") || value.includes("maps.app") || value.includes("google.com"))) {
           try {
             const resp = await fetch(`/api/resolve-url?url=${encodeURIComponent(value)}`);
             if (resp.ok) {
               const data = await resp.json();
-              if (data.resolvedUrl) {
+              // Priorité aux coordonnées calculées côté serveur (cascade :
+              // pin exact, Place Details, géocodage croisé, HTML) — bien plus
+              // fiables que le parsing local du centre de vue.
+              if (
+                typeof data.lat === "number" &&
+                typeof data.lng === "number" &&
+                isValidCoord(data.lat, data.lng)
+              ) {
+                extracted = { lat: data.lat, lng: data.lng };
+              } else if (data.resolvedUrl) {
                 extracted = extractCoordsFromUrl(data.resolvedUrl);
               }
             }
